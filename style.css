@@ -513,7 +513,7 @@ body.dark .rem-badge {
   font-size: 1.05rem;             /* lekko większy tekst */
   font-weight: 600;               /* pogrubienie */
   color: #ffffff;                 /* kolor tekstu */
-  background: linear-gradient(135deg, #61c6f8 0%, #1976d2 100%); /* nowy kolor tła */
+  background: linear-gradient(135deg, #4caf50 0%, #087f23 100%); /* nowy kolor tła */
   padding: 10px 14px;
   border-radius: 10px;
   box-shadow: 0 3px 14px rgba(0,0,0,.15);
@@ -522,7 +522,7 @@ body.dark .rem-badge {
 
 [data-theme="dark"] .daytime-banner{
   color: #ffffff;
-  background: linear-gradient(135deg, #333 0%, #111 100%);
+  background: linear-gradient(135deg, #4caf50 0%, #087f23 100%);
   box-shadow: 0 3px 14px rgba(0,0,0,.35);
 }
 
