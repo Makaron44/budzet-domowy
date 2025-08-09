@@ -83,17 +83,12 @@ h2{
 body.dark #date-banner, body.dark .daytime-banner{
   box-shadow:0 3px 14px rgba(0,0,0,.35);
 }
-
-/* „tykanie” co sekundę */
-@keyframes tickPulse{0%{opacity:.7;transform:scale(.995)}100%{opacity:1;transform:scale(1)}}
-#date-banner.tick, .daytime-banner.tick{animation:tickPulse .1s ease-out}
-
 /* pogoda */
 #date-banner .weather-wrap, .daytime-banner .weather-wrap{
   display:inline-flex; align-items:center; gap:6px;
 }
 #date-banner .weather-icon, .daytime-banner .weather-icon{
-  width:50px; height:50px; vertical-align:middle;
+  width:32px; height:32px; vertical-align:middle;
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.2));
 }
 #date-banner .weather-sep, .daytime-banner .weather-sep{opacity:.85;margin:0 6px}
@@ -291,4 +286,4 @@ body.dark h2.total-card #total.total-neg{color:#ff8a80;background:rgba(231,76,60
 /* ========= DODATKI ========= */
 /* delikatne wejście nagłówka */
 @keyframes floatIn{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
-h1.title-anim{animation:floatIn .2s cubic-bezier(.22,.61,.36,1) both}
+h1.title-anim{animation:floatIn .10s cubic-bezier(.22,.61,.36,1) both}
