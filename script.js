@@ -255,6 +255,16 @@ function observeAnimateOnView(root) {
   }, { threshold: 0.3 }); // 30% kontenera w widoku
   observer.observe(root);
 }
+function catSlug(cat){
+  switch((cat||'').toLowerCase()){
+    case 'przychód':   case 'przychod':   return 'przychod';
+    case 'jedzenie':                      return 'jedzenie';
+    case 'rachunki':                      return 'rachunki';
+    case 'rozrywka':                      return 'rozrywka';
+    case 'transport':                     return 'transport';
+    default:                              return 'inne';
+  }
+}
 
 /* ===============================
    RENDER HISTORII + SUM + WYKRESY
@@ -271,8 +281,12 @@ function updateUI(animateLastAdded = false) {
     const info = document.createElement('div');
     const amountClass = entry.amount >= 0 ? 'positive' : 'negative';
     const sign = entry.amount > 0 ? '+' : '';
-    info.innerHTML = `<strong>[${entry.category}]</strong> ${entry.desc}: 
-      <span class="amount ${amountClass}">${sign}${entry.amount} zł</span>`;
+    const slug = catSlug(e.category);
+info.innerHTML = `
+  <span class="cat-dot cat-${slug}"></span>
+  <strong>[${e.category}]</strong> ${e.desc}:
+  <span class="amount ${amountClass}">${fmtAmount(e.amount)} zł</span>
+`;
 
     const removeBtn = document.createElement('button');
     removeBtn.innerHTML = '🗑️';
@@ -799,6 +813,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Historia/wpisy
   loadEntries();
   updateUI();
+// nagłówek lekko „wjeżdża”
+document.querySelector('h1')?.classList.add('title-anim');
 
   // Przypomnienia
   loadReminders();
@@ -836,6 +852,10 @@ function updateDaytimeBanner() {
   const now = new Date();
   const h = now.getHours();
   const greeting = polishGreeting(h);
+  // subtelny „puls” przy odświeżeniu czasu
+const el = document.getElementById('date-banner') || document.getElementById('daytime-banner');
+if (el) { el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick'); }
+
 
   const weekday = new Intl.DateTimeFormat('pl-PL', { weekday: 'long' }).format(now);
   const date = new Intl.DateTimeFormat('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' }).format(now);
