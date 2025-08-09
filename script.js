@@ -257,14 +257,18 @@ function observeAnimateOnView(root) {
 }
 function catSlug(cat){
   switch((cat||'').toLowerCase()){
-    case 'przychód':   case 'przychod':   return 'przychod';
-    case 'jedzenie':                      return 'jedzenie';
-    case 'rachunki':                      return 'rachunki';
-    case 'rozrywka':                      return 'rozrywka';
-    case 'transport':                     return 'transport';
-    default:                              return 'inne';
+    case 'przychód': case 'przychod': return 'przychod';
+    case 'jedzenie':                  return 'jedzenie';
+    case 'rachunki':                  return 'rachunki';
+    case 'rozrywka':                  return 'rozrywka';
+    case 'transport':                 return 'transport';
+    case 'rata':                 return 'rata';
+    case 'odzież':                 return 'odzież';
+    case 'apteka':                 return 'apteka';
+    default:                          return 'inne';
   }
 }
+
 
 /* ===============================
    RENDER HISTORII + SUM + WYKRESY
@@ -280,13 +284,14 @@ function updateUI(animateLastAdded = false) {
 
     const info = document.createElement('div');
     const amountClass = entry.amount >= 0 ? 'positive' : 'negative';
-    const sign = entry.amount > 0 ? '+' : '';
-    const slug = catSlug(e.category);
+    const slug = catSlug(entry.category);
+const sign = entry.amount > 0 ? '+' : '';
 info.innerHTML = `
   <span class="cat-dot cat-${slug}"></span>
-  <strong>[${e.category}]</strong> ${e.desc}:
-  <span class="amount ${amountClass}">${fmtAmount(e.amount)} zł</span>
+  <strong>[${entry.category}]</strong> ${entry.desc}:
+  <span class="amount ${amountClass}">${sign}${entry.amount.toFixed(2)} zł</span>
 `;
+
 
     const removeBtn = document.createElement('button');
     removeBtn.innerHTML = '🗑️';
@@ -846,23 +851,25 @@ function polishGreeting(h) {
   if (h >= 18 && h < 23) return "Dobry wieczór";
   return "Miłej nocy";
 }
-function updateDaytimeBanner() {
-  const el = document.getElementById('daytime-banner');
-  if (!el) return;
+function updateDateBanner() {
+  const bannerEl = document.getElementById('date-banner') || document.getElementById('daytime-banner');
+  if (!bannerEl) return;
+
   const now = new Date();
   const h = now.getHours();
   const greeting = polishGreeting(h);
-  // subtelny „puls” przy odświeżeniu czasu
-const el = document.getElementById('date-banner') || document.getElementById('daytime-banner');
-if (el) { el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick'); }
-
-
   const weekday = new Intl.DateTimeFormat('pl-PL', { weekday: 'long' }).format(now);
   const date = new Intl.DateTimeFormat('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' }).format(now);
   const time = new Intl.DateTimeFormat('pl-PL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now);
 
-  el.textContent = `${greeting}! Dziś jest ${weekday}, ${date} • ${time}`;
+  bannerEl.textContent = `${greeting}! Dziś jest ${weekday}, ${date} • ${time}`;
+
+  // subtelny „puls” – UWAGA: tylko jedna zmienna (bannerEl), żadnego drugiego 'const el'
+  bannerEl.classList.remove('tick');
+  void bannerEl.offsetWidth;  // reset animacji
+  bannerEl.classList.add('tick');
 }
+
 
 // uruchom i odświeżaj co sekundę
 document.addEventListener('DOMContentLoaded', () => {
