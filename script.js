@@ -823,3 +823,30 @@ themeToggleBtn?.addEventListener('click', () => {
   themeToggleBtn.textContent = isDark ? '☀️ Tryb jasny' : '🌙 Tryb ciemny';
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
 });
+// ====== Pasek z datą i godziną ======
+function polishGreeting(h) {
+  if (h >= 5 && h < 12)  return "Dzień dobry";
+  if (h >= 12 && h < 18) return "Miłego popołudnia";
+  if (h >= 18 && h < 23) return "Dobry wieczór";
+  return "Miłej nocy";
+}
+function updateDaytimeBanner() {
+  const el = document.getElementById('daytime-banner');
+  if (!el) return;
+  const now = new Date();
+  const h = now.getHours();
+  const greeting = polishGreeting(h);
+
+  const weekday = new Intl.DateTimeFormat('pl-PL', { weekday: 'long' }).format(now);
+  const date = new Intl.DateTimeFormat('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' }).format(now);
+  const time = new Intl.DateTimeFormat('pl-PL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now);
+
+  el.textContent = `${greeting}! Dziś jest ${weekday}, ${date} • ${time}`;
+}
+
+// uruchom i odświeżaj co sekundę
+document.addEventListener('DOMContentLoaded', () => {
+  updateDaytimeBanner();
+  setInterval(updateDaytimeBanner, 1000);
+});
+
