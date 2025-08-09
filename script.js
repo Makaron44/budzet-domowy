@@ -867,8 +867,6 @@ function updateDateBanner() {
   const baseText = `${greeting}! Dziś jest ${weekday}, ${date} • ${time}`;
   composeBanner(baseText);
 
-  // subtelny „puls”
-  el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick');
 }
 
 // POGODA (WeatherAPI.com)
