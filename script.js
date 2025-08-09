@@ -849,4 +849,96 @@ document.addEventListener('DOMContentLoaded', () => {
   updateDaytimeBanner();
   setInterval(updateDaytimeBanner, 1000);
 });
+// ====== POGODA (WeatherAPI.com) ======
+const WEATHER_API_KEY = '21fe8e6c8b4a4929aba190126250202';
+const WEATHER_CITY    = 'Rogoźno, wielkopolskie';
+const WEATHER_LS_KEY  = 'weather_cache_v1';
+
+async function fetchWeatherFresh() {
+  const url = `https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${encodeURIComponent(WEATHER_CITY)}&lang=pl`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Weather fetch failed: ' + res.status);
+  const data = await res.json();
+  const icon = data?.current?.condition?.icon || '';
+  return {
+    temp: Math.round(data?.current?.temp_c ?? 0),
+    text: data?.current?.condition?.text || '—',
+    icon: icon.startsWith('//') ? 'https:' + icon : icon,
+    city: data?.location?.name || '—'
+  };
+}
+
+async function getWeatherCached() {
+  try {
+    const raw = localStorage.getItem(WEATHER_LS_KEY);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (cached?.expiresAt && cached.expiresAt > Date.now()) return cached.data;
+    }
+  } catch {}
+  const fresh = await fetchWeatherFresh();
+  try {
+    localStorage.setItem(WEATHER_LS_KEY, JSON.stringify({
+      data: fresh,
+      expiresAt: Date.now() + 45 * 60 * 1000 // 45 minut cache
+    }));
+  } catch {}
+  return fresh;
+}
+
+async function renderWeatherIntoBanner() {
+  const el = document.getElementById('date-banner') || document.getElementById('daytime-banner');
+  if (!el) return;
+  // zachowaj istniejący tekst (data+czas) i doklej pogodę po „ • ”
+  // jeśli już jest pogoda – podmień całość
+  const baseText = el.dataset.baseText || el.textContent;
+  el.dataset.baseText = baseText;
+
+  try {
+    const w = await getWeatherCached();
+    el.innerHTML = `
+      <span>${baseText}</span>
+      <span class="weather-sep"> • </span>
+      <span class="weather-wrap" title="${w.city}">
+        <img class="weather-icon" alt="" src="${w.icon}"/>
+        ${w.temp}°C ${w.text}
+      </span>
+    `;
+  } catch {
+    // jak API padnie – zostaw samą datę/godzinę
+    el.textContent = baseText;
+  }
+}
+
+// jeśli masz już updateDaytimeBanner/updateDateBanner – podmień, żeby doklejała pogodę
+function polishGreeting(h) {
+  if (h >= 5 && h < 12)  return "Dzień dobry";
+  if (h >= 12 && h < 18) return "Miłego popołudnia";
+  if (h >= 18 && h < 23) return "Dobry wieczór";
+  return "Miłej nocy";
+}
+function updateDateBanner() {
+  const el = document.getElementById('date-banner') || document.getElementById('daytime-banner');
+  if (!el) return;
+  const now = new Date();
+  const h = now.getHours();
+  const greeting = polishGreeting(h);
+  const weekday = new Intl.DateTimeFormat('pl-PL', { weekday: 'long' }).format(now);
+  const date = new Intl.DateTimeFormat('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' }).format(now);
+  const time = new Intl.DateTimeFormat('pl-PL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now);
+  el.textContent = `${greeting}! Dziś jest ${weekday}, ${date} • ${time}`;
+  // po ustawieniu tekstu – dotelepuj pogodę
+  renderWeatherIntoBanner();
+}
+
+// start (zegar co sekundę, pogoda co godzinę)
+document.addEventListener('DOMContentLoaded', () => {
+  updateDateBanner();
+  setInterval(updateDateBanner, 1000);
+  // odśwież pogodę co 60 min (cache i tak pilnuje)
+  setInterval(() => renderWeatherIntoBanner(), 60 * 60 * 1000);
+  // na starcie spróbuj doładować od razu (nie czekając na sekundę)
+  renderWeatherIntoBanner();
+});
+
 
