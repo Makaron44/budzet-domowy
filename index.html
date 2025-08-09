@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Budżet domowy Macieja</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Budżet domowy Macieja</h1>
+<button id="theme-toggle" type="button">🌙 Tryb ciemny</button>
+    <div id="toast" aria-live="polite"></div>
+
+    <!-- Formularz budżetu -->
+    <form id="budget-form" onsubmit="return false;">
+      <input type="text" id="desc" placeholder="Opis (np. czynsz, wypłata)" required />
+      <select id="category" required>
+        <option value="" disabled selected>Wybierz kategorię</option>
+        <option value="Przychód">Przychód</option>
+        <option value="Jedzenie">Jedzenie</option>
+        <option value="Rachunki">Rachunki</option>
+        <option value="Rozrywka">Rozrywka</option>
+        <option value="Transport">Transport</option>
+        <option value="Rata">Rata</option>
+        <option value="Odzież">Odzież</option>
+        <option value="Apteka">Apteka</option>
+        <option value="Inne">Inne</option>
+      </select>
+      <input type="number" id="amount" placeholder="Kwota" required />
+      <div class="btn-row">
+        <button type="button" id="income-btn">Przychód</button>
+        <button type="button" id="expense-btn">Wydatek</button>
+      </div>
+    </form>
+
+    <!-- Historia -->
+    <h2>Historia</h2>
+<!-- FILTRY -->
+<div id="filters" class="filters">
+  <select id="filter-type" title="Rodzaj">
+    <option value="all" selected>Wszystko</option>
+    <option value="income">Tylko przychody</option>
+    <option value="expense">Tylko wydatki</option>
+  </select>
+
+  <select id="filter-category" title="Kategoria">
+    <option value="all" selected>Wszystkie kategorie</option>
+    <option value="Przychód">Przychód</option>
+    <option value="Jedzenie">Jedzenie</option>
+    <option value="Rachunki">Rachunki</option>
+    <option value="Rozrywka">Rozrywka</option>
+    <option value="Transport">Transport</option>
+    <option value="Rata">Rata</option>
+    <option value="Odzież">Odzież</option>
+    <option value="Apteka">Apteka</option>
+    <option value="Inne">Inne</option>
+  </select>
+
+  <button type="button" id="filter-reset">Wyczyść</button>
+</div>
+
+<!-- Suma po filtrze -->
+<p id="filtered-summary" style="display:none; text-align:center; margin:6px 0 0;">
+  Suma (filtr): <strong><span id="filtered-total">0.00</span> zł</strong>
+</p>
+    <ul id="history"></ul>
+
+    <!-- Suma -->
+    <h2>Suma: <span id="total">0.00</span> zł</h2>
+
+<h2>Wydatki wg kategorii</h2>
+<div id="chart-categories"></div>
+
+<h2>Bilans miesięczny</h2>
+<div id="chart-months"></div>
+
+    <!-- Eksport -->
+    <div class="btn-row">
+      <button type="button" id="export-csv-btn">📂 Eksportuj CSV</button>
+      <button type="button" id="export-pdf-btn">📄 Eksportuj PDF</button>
+    </div>
+
+    <!-- Przypomnienia -->
+    <h2>Przypomnienia</h2>
+    <form id="reminder-form" onsubmit="return false;">
+      <input type="text" id="reminder-text" placeholder="Nazwa rachunku" required />
+      <label for="reminder-date" class="rem-label">Data i godzina</label>
+      <input type="datetime-local" id="reminder-date" step="60" required />
+      <select id="reminder-repeat">
+        <option value="once">Jednorazowe</option>
+        <option value="monthly">Co miesiąc</option>
+        <option value="weekly">Co tydzień</option>
+        <option value="yearly">Co rok</option>
+      </select>
+      <button type="submit">Dodaj</button>
+    </form>
+    <ul id="reminder-list"></ul>
+  </div>
+
+  <!-- jsPDF do eksportu PDF -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

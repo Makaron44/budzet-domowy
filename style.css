@@ -1,0 +1,513 @@
+
+/* ========= ZMIENNE (jasny motyw domyślnie) ========= */
+:root {
+  --bg-gradient: linear-gradient(120deg, #89f7fe, #66a6ff);
+  --container-bg: rgba(255, 255, 255, 0.7);
+  --text-color: #1b3b5f;
+  --heading-color: #27496d;
+  --input-bg: #fff;
+  --input-border: #b5c6d6;
+  --btn-gradient: linear-gradient(135deg, #61c6f8 0%, #1976d2 100%);
+  --btn-gradient-hover: linear-gradient(135deg, #1976d2 0%, #61c6f8 100%);
+  --positive-color: #19994c;
+  --negative-color: #e53935;
+  --toast-bg: #1f7a1f;
+  --toast-warn-bg: #c04a1b;
+}
+
+/* ========= CIEMNY MOTYW ========= */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-gradient: linear-gradient(120deg, #1e293b, #0f172a);
+    --container-bg: rgba(30, 41, 59, 0.8);
+    --text-color: #e2e8f0;
+    --heading-color: #f1f5f9;
+    --input-bg: #334155;
+    --input-border: #475569;
+    --btn-gradient: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+    --btn-gradient-hover: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    --positive-color: #4ade80;
+    --negative-color: #f87171;
+    --toast-bg: #166534;
+    --toast-warn-bg: #9a3412;
+  }
+}
+
+/* Wymuszenie ciemnego motywu ręcznie */
+body.dark {
+  --bg-gradient: linear-gradient(120deg, #1e293b, #0f172a);
+  --container-bg: rgba(30, 41, 59, 0.8);
+  --text-color: #e2e8f0;
+  --heading-color: #f1f5f9;
+  --input-bg: #334155;
+  --input-border: #475569;
+  --btn-gradient: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+  --btn-gradient-hover: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  --positive-color: #4ade80;
+  --negative-color: #f87171;
+  --toast-bg: #166534;
+  --toast-warn-bg: #9a3412;
+}
+/*=========Global ========= */
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(120deg, #89f7fe, #66a6ff);
+  background-size: 300% 300%;
+  animation: bgMove 18s ease infinite;
+  min-height: 100vh;
+  margin: 0;
+}
+@keyframes bgMove {
+  0% { background-position: 0% 50% }
+  50% { background-position: 100% 50% }
+  100% { background-position: 0% 50% }
+}
+
+/* ========= Karta (glass) ========= */
+.container {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(10px);
+  max-width: 430px;
+  margin: 32px auto;
+  padding: 28px 18px 30px;
+  border-radius: 18px;
+  box-shadow: 0 7px 32px rgba(67,94,114,0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* ========= Nagłówki ========= */
+h1 {
+  text-align: center;
+  color: #1b3b5f;
+  font-size: 2em;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+h2 {
+  text-align: center;
+  color: #27496d;
+  font-size: 1.1em;
+  margin: 14px 0 6px;
+  font-weight: 600;
+}
+
+/* ========= Formularze + pola ========= */
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255,255,255,0.6);
+  padding: 14px;
+  border-radius: 12px;
+  box-shadow: 0 2px 7px rgba(78,98,119,0.06);
+}
+input[type="text"],
+input[type="number"],
+input[type="datetime-local"],
+select {
+  flex: 1 1 130px;
+  padding: 12px;
+  font-size: 1.07em;
+  border-radius: 7px;
+  border: 1px solid #b5c6d6;
+  background: #fff;
+  outline: none;
+  transition: border .15s, box-shadow .15s;
+}
+input:focus, select:focus {
+  border: 1.5px solid #70b6f9;
+  box-shadow: 0 0 0 3px rgba(112,182,249,.15);
+}
+
+/* ========= Przyciski (wspólne) ========= */
+.btn-row { display: flex; gap: 10px; width: 100%; justify-content: space-between; flex-wrap: wrap; }
+.btn-row button { flex: 1 1 48%; }
+
+#budget-form button,
+#export-csv-btn,
+#export-pdf-btn,
+#reminder-form button {
+  height: 50px;                 /* wyższe */
+  font-size: 1.1em;
+  padding: 0 14px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+
+  cursor: pointer;
+  color: #fff;
+  border: none;
+  background: linear-gradient(135deg, #61c6f8 0%, #1976d2 100%);
+  box-shadow: 0 2px 10px rgba(70,130,180,0.10);
+  transition: background .18s, transform .12s;
+}
+#budget-form button:hover,
+#export-csv-btn:hover,
+#export-pdf-btn:hover,
+#reminder-form button:hover {
+  background: linear-gradient(135deg, #1976d2 0%, #61c6f8 100%);
+  transform: translateY(-2px) scale(1.04);
+}
+
+/* ========= Historia ========= */
+#history {
+  background: rgba(255,255,255,0.6);
+  padding: 12px;
+  border-radius: 10px;
+  min-height: 60px;
+  box-shadow: 0 1px 6px rgba(78,98,119,0.07);
+  list-style: none;
+  margin-top: 7px;
+}
+#history li {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 10px; margin-bottom: 7px; font-size: 1.04em;
+  border-bottom: 1px solid rgba(226,234,244,0.8);
+  padding: 7px 3px 5px;
+  transition: transform .25s ease, opacity .25s ease;
+}
+#history li:last-child { margin-bottom: 0; border-bottom: none; }
+#history li.added { animation: popIn .25s ease-out both; }
+#history li.removing { opacity: 0; transform: translateX(20px) scale(0.98); }
+@keyframes popIn { from {opacity:0; transform:translateY(6px)} to {opacity:1; transform:none} }
+
+#history li strong { color: #1976d2; font-weight: 600; }
+#history li button {
+  flex: none; width: 28px; height: 28px; padding: 0;
+  background: linear-gradient(135deg, #fd4b57 0%, #fd8963 100%);
+  border: none; border-radius: 50%; color: #fff; cursor: pointer;
+  transition: transform .13s, filter .16s;
+}
+#history li button:hover { transform: scale(1.1); filter: brightness(1.05); }
+
+.amount.positive { color: #19994c; font-weight: 600; }
+.amount.negative { color: #e53935; font-weight: 600; }
+
+/* ========= Suma ========= */
+#total {
+  font-weight: bold; font-size: 2em; text-align: center;
+  background: rgba(241,253,243,0.9);
+  border-radius: 8px; padding: 8px 0;
+  box-shadow: 0 1px 7px rgba(76,175,80,0.06);
+  margin-top: 6px;
+}
+
+/* ========= Przypomnienia – siatka ========= */
+#reminder-form {
+  display: grid;
+  grid-template-columns: 1fr;   /* domyślnie jedna kolumna */
+  gap: 10px;
+}
+#reminder-form .rem-label {
+  width: 100%; font-size: .9em; color: #444;
+  margin-top: 4px; margin-bottom: -4px; font-weight: 500;
+}
+/* wyrównanie wysokości pól */
+#reminder-form input[type="text"],
+#reminder-form input[type="datetime-local"],
+#reminder-form select,
+#reminder-form button {
+  height: 44px; line-height: 44px;
+  font-size: 16px; padding: 0 10px; border-radius: 7px; box-sizing: border-box;
+}
+/* nie pozwalaj elementom wymuszać szerokości */
+#reminder-form input,
+#reminder-form select,
+#reminder-form button,
+#reminder-form .rem-label {
+  min-width: 0; width: 100%; box-sizing: border-box;
+}
+
+/* 2 kolumny – poziomy telefon / węższe ekrany */
+@media (min-width: 560px) and (max-width: 879px) {
+  #reminder-form {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+  }
+  #reminder-form #reminder-text   { grid-column: 1 / 2; }
+  #reminder-form .rem-label       { grid-column: 2 / 3; }
+  #reminder-form #reminder-date   { grid-column: 2 / 3; }
+  #reminder-form #reminder-repeat { grid-column: 1 / 2; }
+  #reminder-form button[type="submit"] { grid-column: 2 / 3; white-space: nowrap; }
+}
+
+/* 4 kolumny – szeroko */
+@media (min-width: 880px) {
+  #reminder-form {
+    grid-template-columns: 1.2fr 1fr 0.9fr auto;
+    align-items: center;
+  }
+  #reminder-form #reminder-text   { grid-column: 1 / 2; }
+  #reminder-form .rem-label       { grid-column: 2 / 3; }
+  #reminder-form #reminder-date   { grid-column: 2 / 3; }
+  #reminder-form #reminder-repeat { grid-column: 3 / 4; }
+  #reminder-form button[type="submit"] { grid-column: 4 / 5; white-space: nowrap; }
+}
+
+/* ========= Lista przypomnień ========= */
+#reminder-list { list-style: none; padding: 0; margin-top: 10px; background: rgba(255,255,255,0.5); border-radius: 10px; }
+#reminder-list li {
+  padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.1);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.rem-info { display: flex; flex-direction: column; }
+.rem-meta { font-size: .9em; color: #567; }
+.rem-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .78em; background: #e8f2ff; color: #1b66c9; margin-left: 6px; }
+.rem-actions { display: flex; gap: 8px; }
+.rem-actions button { padding: 6px 10px; border: none; border-radius: 7px; cursor: pointer; color: #fff; }
+.rem-actions .btn-paid { background: #19994c; }
+.rem-actions button:not(.btn-paid) { background: #e74c3c; }
+
+/* ========= Toast ========= */
+#toast { position: sticky; top: 8px; z-index: 50; display: none; }
+.toast-msg {
+  background: #1f7a1f; color: #fff; padding: 10px 14px; border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.12);
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  animation: toastDrop .25s ease-out;
+}
+.toast-msg.warn { background: #c04a1b; }
+.toast-close { background: rgba(255,255,255,.2); border: none; color: #fff; border-radius: 6px; padding: 6px 8px; cursor: pointer; }
+@keyframes toastDrop { from {opacity:0; transform: translateY(-8px)} to {opacity:1; transform:none} }
+
+/* ========= Mobile drobiazgi ========= */
+@media (max-width: 600px) {
+  input, select, button { -webkit-appearance: none; appearance: none; }
+  body { font-size: 16px; }
+  h1 { font-size: 1.4em; margin-bottom: 6px; }
+  h2 { font-size: 1em;  margin: 10px 0 6px; }
+  .container { margin-top: 12px; padding: 10px 12px; }
+  form { padding: 8px; gap: 8px; }
+  input[type="text"], input[type="number"], select {
+    font-size: 16px; height: 40px; padding: 0 10px; border-radius: 10px;
+  }
+  .btn-row { flex-direction: column; }
+  .btn-row button { height: 42px; font-size: 16px; }
+  #history li { font-size: .95em; padding: 6px 4px; }
+  #total { font-size: 1.3em; padding: 6px 0; }
+}
+#theme-toggle {
+  background: var(--btn-gradient);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.95em;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.12s;
+  align-self: center;
+}
+#theme-toggle:hover {
+  background: var(--btn-gradient-hover);
+  transform: translateY(-2px);
+}
+/* ====== Tryb ciemny ====== */
+body.dark {
+  background: linear-gradient(120deg, #0f2027, #203a43, #2c5364);
+  color: #f1f1f1;
+}
+
+body.dark .container {
+  background: rgba(20, 20, 20, 0.7);
+  box-shadow: 0 7px 32px rgba(0, 0, 0, 0.4);
+}
+
+body.dark h1, 
+body.dark h2 {
+  color: #e0e0e0;
+}
+
+body.dark input,
+body.dark select,
+body.dark #history,
+body.dark #reminder-form,
+body.dark #reminder-list {
+  background: rgba(40, 40, 40, 0.8);
+  color: #fff;
+  border: 1px solid #555;
+}
+
+body.dark option {
+  background: #333;
+  color: #fff;
+}
+
+body.dark #total {
+  background: rgba(30, 60, 30, 0.8);
+  color: #4caf50;
+}
+
+body.dark #history li {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.dark #history li strong {
+  color: #64b5f6;
+}
+
+/* Przypomnienia w ciemnym */
+body.dark .rem-badge {
+  background: #334;
+  color: #aaccff;
+}
+/* --- FIX: datetime-local niech trzyma się siatki i nie wystaje --- */
+#reminder-form input[type="datetime-local"]{
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  height: 44px;           /* spójnie z innymi polami */
+  line-height: 1.2;
+}
+
+/* iOS WebKit ma własne wnętrze – przycinamy je, żeby nie powiększało pola */
+#reminder-form input[type="datetime-local"]::-webkit-datetime-edit { padding: 0; }
+#reminder-form input[type="datetime-local"]::-webkit-date-and-time-value { min-height: 1em; }
+
+/* --- Landscape na wąskich ekranach: układ 2-kolumnowy, nic nie wyjeżdża --- */
+@media (orientation: landscape) and (max-width: 740px) {
+  #reminder-form {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+  }
+  /* nazwa rachunku na pełną szerokość u góry */
+  #reminder-form #reminder-text { grid-column: 1 / 3; }
+
+  /* etykieta daty + pole daty po lewej kolumnie */
+  #reminder-form .rem-label     { grid-column: 1 / 2; }
+  #reminder-form #reminder-date { grid-column: 1 / 2; }
+
+  /* powtarzalność + przycisk po prawej */
+  #reminder-form #reminder-repeat       { grid-column: 2 / 3; }
+  #reminder-form button[type="submit"]  { grid-column: 2 / 3; white-space: nowrap; }
+}
+/* Pasek filtrów */
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  background: var(--form-bg, rgba(255,255,255,.6));
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 7px rgba(0,0,0,0.06);
+  margin-bottom: 6px;
+}
+
+#filter-reset {
+  background: linear-gradient(135deg, #9aa7b1 0%, #6b7b88 100%);
+  color: #fff; border: none; border-radius: 8px;
+  height: 44px; padding: 0 12px; font-size: 1em;
+}
+#filter-reset:hover {
+  transform: translateY(-2px) scale(1.03);
+}
+
+@media (max-width: 600px) {
+  .filters { grid-template-columns: 1fr; }
+  #filter-reset { height: 44px; }
+}
+/* Proste „wykresy” CSS */
+#chart-categories, #chart-months { display: flex; flex-direction: column; gap: 8px; }
+.chart-row { display: grid; grid-template-columns: 120px 1fr auto; gap: 10px; align-items: center; }
+.chart-label { font-size: .95em; opacity: .9; }
+.chart-bar { height: 12px; background: rgba(0,0,0,.08); border-radius: 6px; overflow: hidden; }
+.chart-bar.thin { height: 8px; }
+.chart-fill { height: 100%; width: 0; transition: width .25s ease; }
+.chart-fill.expense { background: linear-gradient(90deg, #ff7a7a, #ff4d4d); }
+.chart-fill.income  { background: linear-gradient(90deg, #4ade80, #22c55e); }
+.chart-fill.saldo.pos { background: linear-gradient(90deg, #60a5fa, #2563eb); }
+.chart-fill.saldo.neg { background: linear-gradient(90deg, #fca5a5, #ef4444); }
+.chart-values { display: flex; gap: 10px; font-size: .9em; white-space: nowrap; }
+.chart-empty { opacity: .7; font-style: italic; text-align: center; padding: 6px 0; }
+
+/* wąskie ekrany */
+@media (max-width: 480px) {
+  .chart-row { grid-template-columns: 90px 1fr auto; }
+}
+/* --- Pasek filtrów: elastyczna siatka, nic nie wyjeżdża --- */
+.filters{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap:10px;
+  align-items:center;
+}
+
+/* pozwól elementom się kurczyć w gridzie */
+.filters > *{
+  min-width:0;
+}
+
+/* przycisk niech się dopasowuje do kolumny */
+#filter-reset{
+  height:44px;
+  white-space:nowrap;     /* bez łamania tekstu */
+  overflow:hidden;        /* ale nie wychodź poza kolumnę */
+  text-overflow:ellipsis; /* w razie czego „…” */
+}
+
+/* średnie ekrany i poziomy telefon: automatycznie łam wiersze */
+@media (max-width: 900px){
+  .filters{
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+
+/* wąski landscape (iPhone poziomo): 2 kolumny, reset na całą szerokość */
+@media (orientation: landscape) and (max-width: 740px){
+  .filters{
+    grid-template-columns: 1fr 1fr;
+  }
+  #filter-reset{
+    grid-column: 1 / -1;  /* pełny wiersz */
+    width:100%;
+    justify-self: stretch;
+  }
+}
+
+/* bardzo wąskie: wszystko jeden pod drugim */
+@media (max-width: 480px){
+  .filters{
+    grid-template-columns: 1fr;
+  }
+  #filter-reset{
+    grid-column:auto;
+  }
+}
+/* Animowane wjazdy słupków */
+.chart-fill {
+  transform-origin: left;
+  transform: scaleX(0);                 /* start: niewidoczny */
+  transition: transform 1.6s ease;       /* czas/anima */
+}
+
+/* wersja cienkich pasków też korzysta z tego samego */
+.chart-row .chart-fill.animate {
+  transform: scaleX(1);                 /* cel: pełna szerokość ustawiona (width:%) */
+}
+
+/* delikatne opóźnienia falą (opcjonalnie) */
+.chart-row { --row-delay: 0ms; }
+.chart-row .chart-fill { transition-delay: var(--row-delay); }
+/* --- Animacje etykiet i wartości przy starcie wykresu --- */
+.anim-label,
+.anim-value {
+  opacity: 0;
+  transform: translateY(6px) scale(.98);
+  will-change: opacity, transform;
+}
+
+/* gdy kontener wykresu dostanie .in-view (IntersectionObserver w JS) */
+.in-view .anim-label,
+.in-view .anim-value {
+  opacity: 1;
+  transform: none;
+}
+
+/* delikatny „skok” wartości przy końcówce (już uwzględnione w JS: cubic-bezier) */
+/* Słupki masz już z .chart-fill/.animate – zostają bez zmian */
