@@ -162,6 +162,24 @@ input[type="datetime-local"]::-webkit-datetime-edit{padding:0}
 .amount.positive{color:var(--pos); font-weight:600}
 .amount.negative{color:var(--neg); font-weight:600}
 
+/* Tryb ciemny – historia */
+body.dark #history {
+  background: rgba(50, 50, 50, 0.9); /* ciemniejsze niż jasny motyw, ale wyraźne */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Tryb ciemny – kwoty */
+body.dark .amount.negative {
+  color: #ff6b6b; /* jaśniejszy czerwony */
+  font-weight: 600;
+}
+
+body.dark .amount.positive {
+  color: #4ade80; /* żywszy zielony */
+  font-weight: 600;
+}
+
+
 /* kropki kategorii */
 .cat-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;flex:0 0 auto;box-shadow:0 0 0 2px rgba(0,0,0,.06) inset}
 .cat-przychod{background:#2ecc71}
