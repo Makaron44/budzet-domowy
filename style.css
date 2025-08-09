@@ -508,6 +508,22 @@ body.dark .rem-badge {
   opacity: 1;
   transform: none;
 }
+.daytime-banner{
+  text-align:center;
+  font-size: 0.98rem;
+  color: #2d4c63;
+  background: rgba(255,255,255,0.7);
+  padding: 8px 12px;
+  border-radius: 10px;
+  box-shadow: 0 3px 14px rgba(0,0,0,.06);
+  margin-top: -6px;   /* odrobinę bliżej nagłówka */
+}
+[data-theme="dark"] .daytime-banner{
+  color:#e7eef7;
+  background: rgba(255,255,255,0.08);
+  box-shadow: 0 3px 14px rgba(0,0,0,.25);
+}
+
 
 /* delikatny „skok” wartości przy końcówce (już uwzględnione w JS: cubic-bezier) */
 /* Słupki masz już z .chart-fill/.animate – zostają bez zmian */
