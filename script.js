@@ -10,7 +10,7 @@ const expenseBtn = document.getElementById('expense-btn');
 const exportCsvBtn = document.getElementById('export-csv-btn');
 const exportPdfBtn  = document.getElementById('export-pdf-btn');
 
-// --- Filtry (opcjonalnie) ---
+// --- Filtry ---
 const filterType = document.getElementById('filter-type');         // all | income | expense
 const filterCategory = document.getElementById('filter-category');  // all | nazwa kategorii
 const filterResetBtn = document.getElementById('filter-reset');
@@ -210,23 +210,20 @@ function prepareBarsForAnimation(root) {
 
   const rows = Array.from(root.querySelectorAll('.chart-row'));
   rows.forEach((row, idx) => {
-    row.style.setProperty('--row-delay', (idx * 200) + 'ms'); // fala: 0ms, 150ms, 300ms...
+    row.style.setProperty('--row-delay', (idx * 200) + 'ms'); // fala
   });
 
-  // słupki — wolniej i z opóźnieniem wg wiersza
   root.querySelectorAll('.chart-fill').forEach(el => {
     el.classList.remove('animate');
     el.style.transition = 'transform 2.2s ease-out var(--row-delay)';
   });
 
-  // etykiety — fade + lekki wjazd
   root.querySelectorAll('.anim-label').forEach(el => {
     el.style.opacity = '0';
     el.style.transform = 'translateY(6px) scale(.98)';
     el.style.transition = 'opacity .7s ease calc(var(--row-delay) + 150ms), transform .7s ease calc(var(--row-delay) + 150ms)';
   });
 
-  // wartości — fade + „skok”
   root.querySelectorAll('.anim-value').forEach(el => {
     el.style.opacity = '0';
     el.style.transform = 'translateY(6px) scale(.98)';
@@ -239,22 +236,22 @@ function observeAnimateOnView(root) {
   const observer = new IntersectionObserver((entries, obs) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
-        root.classList.add('in-view'); // uruchamia CSS etykiet/wartości
-        // uruchom słupki
+        root.classList.add('in-view');
         root.querySelectorAll('.chart-fill').forEach(el => el.classList.add('animate'));
-        // odpal fade-in tekstów (przez .in-view + transition ustawione wyżej)
         root.querySelectorAll('.anim-label, .anim-value').forEach(el => {
           requestAnimationFrame(() => {
             el.style.opacity = '1';
             el.style.transform = 'none';
           });
         });
-        obs.disconnect(); // animuj tylko raz
+        obs.disconnect();
       }
     });
-  }, { threshold: 0.3 }); // 30% kontenera w widoku
+  }, { threshold: 0.3 });
   observer.observe(root);
 }
+
+// kropki kategorii
 function catSlug(cat){
   switch((cat||'').toLowerCase()){
     case 'przychód': case 'przychod': return 'przychod';
@@ -262,13 +259,12 @@ function catSlug(cat){
     case 'rachunki':                  return 'rachunki';
     case 'rozrywka':                  return 'rozrywka';
     case 'transport':                 return 'transport';
-    case 'rata':                 return 'rata';
-    case 'odzież':                 return 'odzież';
-    case 'apteka':                 return 'apteka';
+    case 'rata':                      return 'rata';
+    case 'odzież': case 'odziez':     return 'odziez';
+    case 'apteka':                    return 'apteka';
     default:                          return 'inne';
   }
 }
-
 
 /* ===============================
    RENDER HISTORII + SUM + WYKRESY
@@ -277,27 +273,25 @@ function updateUI(animateLastAdded = false) {
   historyList.innerHTML = '';
 
   const filtered = getFilteredEntries();
-
   const reversed = filtered.slice().reverse();
+
   reversed.forEach((entry, i) => {
     const li = document.createElement('li');
 
     const info = document.createElement('div');
     const amountClass = entry.amount >= 0 ? 'positive' : 'negative';
     const slug = catSlug(entry.category);
-const sign = entry.amount > 0 ? '+' : '';
-info.innerHTML = `
-  <span class="cat-dot cat-${slug}"></span>
-  <strong>[${entry.category}]</strong> ${entry.desc}:
-  <span class="amount ${amountClass}">${sign}${entry.amount.toFixed(2)} zł</span>
-`;
-
+    const sign = entry.amount > 0 ? '+' : '';
+    info.innerHTML = `
+      <span class="cat-dot cat-${slug}"></span>
+      <strong>[${entry.category}]</strong> ${entry.desc}:
+      <span class="amount ${amountClass}">${sign}${entry.amount.toFixed(2)} zł</span>
+    `;
 
     const removeBtn = document.createElement('button');
     removeBtn.innerHTML = '🗑️';
     removeBtn.title = 'Usuń wpis';
 
-    // znajdź indeks oryginalny (bo reversed/filtry to te same referencje obiektów)
     const originalIndex = entries.lastIndexOf(entry);
 
     removeBtn.onclick = () => {
@@ -313,16 +307,13 @@ info.innerHTML = `
   });
 
   // suma globalna
- const total = entries.reduce((sum, e) => sum + e.amount, 0);
-totalSpan.textContent = total.toFixed(2);
+  const total = entries.reduce((sum, e) => sum + e.amount, 0);
+  totalSpan.textContent = total.toFixed(2);
+  totalSpan.classList.toggle('total-pos', total >= 0);
+  totalSpan.classList.toggle('total-neg', total < 0);
+  totalSpan.style.color = '';
 
-// styl przez klasy (ładniej w light/dark)
-totalSpan.classList.toggle('total-pos', total >= 0);
-totalSpan.classList.toggle('total-neg', total < 0);
-totalSpan.style.color = ''; // wyczyść inline (oddajemy kontrolę CSS)
-
-
-  // suma po filtrze (pokazuj gdy filtr aktywny)
+  // suma po filtrze
   const isDefault =
     (!filterType || filterType.value === 'all') &&
     (!filterCategory || filterCategory.value === 'all');
@@ -340,7 +331,7 @@ totalSpan.style.color = ''; // wyczyść inline (oddajemy kontrolę CSS)
   renderCategoryChart();
   renderMonthlyChart();
 
-  // Przygotuj animacje i start dopiero na widoku
+  // Animacje „po wejściu w widok”
   prepareBarsForAnimation(chartCatsRoot);
   prepareBarsForAnimation(chartMonthsRoot);
   observeAnimateOnView(chartCatsRoot);
@@ -377,28 +368,22 @@ function exportToCSV() {
 exportCsvBtn?.addEventListener('click', exportToCSV);
 
 /* ===============================
-   EKSPORT PDF (jsPDF)
+   EKSPORT PDF (jsPDF) + polskie znaki (Roboto z /fonts)
    =============================== */
-/* ========== PDF: ładny układ + polskie znaki (Roboto) ========== */
-
-// helpers
 function abToBase64(ab) {
   let binary = '';
   const bytes = new Uint8Array(ab);
   for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
   return btoa(binary);
 }
-
 async function addLocalFont(doc, path, family, style='normal') {
-  const res = await fetch(path); // lokalnie: /fonts/Roboto-Regular.ttf
+  const res = await fetch(path);
   if (!res.ok) throw new Error('Nie mogę pobrać fontu: ' + path);
   const b64 = abToBase64(await res.arrayBuffer());
   const filename = path.split('/').pop();
   doc.addFileToVFS(filename, b64);
   doc.addFont(filename, family, style);
 }
-
-// formatuj kwotę z separatorem i dwoma miejscami
 function money(n) {
   const sign = n >= 0 ? '+' : '−';
   return `${sign}${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -420,17 +405,14 @@ async function exportToPDF() {
 
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
 
-  // 1) czcionki z polskimi znakami
   try {
-    // w exportToPDF przed rysowaniem:
-await addLocalFont(doc, './fonts/Roboto-Regular.ttf', 'Roboto', 'normal');
-await addLocalFont(doc, './fonts/Roboto-Bold.ttf',    'Roboto', 'bold');
-doc.setFont('Roboto', 'normal');
+    await addLocalFont(doc, './fonts/Roboto-Regular.ttf', 'Roboto', 'normal');
+    await addLocalFont(doc, './fonts/Roboto-Bold.ttf',    'Roboto', 'bold');
+    doc.setFont('Roboto', 'normal');
   } catch (e) {
     console.warn('Font Roboto nie został wczytany, używam domyślnej:', e);
   }
 
-  // 2) stałe i kolory
   const margin = 56;
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -443,9 +425,8 @@ doc.setFont('Roboto', 'normal');
   const colorHeaderBg = [245, 247, 250];
   const green = [25, 153, 76];
   const red = [229, 57, 53];
-  const blue = [33, 150, 243];
 
-  // 3) nagłówek
+  // Nagłówek
   doc.setFontSize(22);
   doc.setFont(undefined, 'bold');
   doc.setTextColor(...colorText);
@@ -456,7 +437,7 @@ doc.setFont('Roboto', 'normal');
   doc.setTextColor(...colorMuted);
   doc.text(`Wygenerowano: ${new Date().toLocaleString()}`, margin, 84);
 
-  // 4) nagłówki kolumn
+  // Kolumny
   const col = {
     date:  margin,
     cat:   margin + 140,
@@ -464,7 +445,7 @@ doc.setFont('Roboto', 'normal');
     amtR:  pageW - margin
   };
 
-  // tło pod nagłówkiem
+  // Pasek nagłówka
   doc.setFillColor(...colorHeaderBg);
   doc.rect(margin - 8, tableTop - 18, pageW - margin * 2 + 16, 28, 'F');
 
@@ -476,12 +457,11 @@ doc.setFont('Roboto', 'normal');
   doc.text('Opis',     col.desc, tableTop);
   doc.text('Kwota',    col.amtR, tableTop, { align: 'right' });
 
-  // linia pod nagłówkiem
   doc.setDrawColor(...colorLine);
   doc.setLineWidth(0.8);
   doc.line(margin, tableTop + 6, pageW - margin, tableTop + 6);
 
-  // 5) wiersze
+  // Wiersze
   doc.setFontSize(11);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(...colorText);
@@ -494,7 +474,6 @@ doc.setFont('Roboto', 'normal');
       doc.addPage();
       y = 64;
 
-      // przenieś nagłówki na nową stronę
       doc.setFillColor(...colorHeaderBg);
       doc.rect(margin - 8, y - 18, pageW - margin * 2 + 16, 28, 'F');
 
@@ -516,7 +495,6 @@ doc.setFont('Roboto', 'normal');
       y += 26;
     }
 
-    // zebra
     if (idx % 2 === 0) {
       doc.setFillColor(252, 253, 255);
       doc.rect(margin - 8, y - 16, pageW - margin * 2 + 16, rowH, 'F');
@@ -525,21 +503,17 @@ doc.setFont('Roboto', 'normal');
     const dateStr = new Date(e.id).toLocaleString();
     const amountStr = money(e.amount);
 
-    // dane
     doc.text(dateStr, col.date, y);
     doc.text(e.category, col.cat, y);
 
-    // opis — przytnij szerokość
     const maxDescW = (col.amtR - 12) - col.desc;
     const descLines = doc.splitTextToSize(String(e.desc), maxDescW);
     doc.text(descLines[0], col.desc, y);
 
-    // kwota prawa, kolor +/- 
     if (e.amount >= 0) doc.setTextColor(...green); else doc.setTextColor(...red);
     doc.text(`${amountStr} zł`, col.amtR, y, { align: 'right' });
     doc.setTextColor(...colorText);
 
-    // kolejne linie opisu pod spodem
     for (let i = 1; i < descLines.length; i++) {
       y += rowH - 6;
       doc.text(descLines[i], col.desc, y);
@@ -547,7 +521,7 @@ doc.setFont('Roboto', 'normal');
     y += rowH;
   });
 
-  // 6) suma w ładnym boxie po prawej
+  // Suma
   const total = entries.reduce((s, e) => s + e.amount, 0);
   if (y > pageH - 96) { doc.addPage(); y = 64; }
 
@@ -561,11 +535,13 @@ doc.setFont('Roboto', 'normal');
 
   doc.setFont(undefined, 'bold');
   doc.setFontSize(14);
-  doc.setTextColor(...(total >= 0 ? green : red));
-  doc.text(`Suma: ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`,
-           boxX + sumBoxW/2, boxY + sumBoxH/2 + 5, { align: 'center' });
+  doc.setTextColor(...(total >= 0 ? [25,153,76] : [229,57,53]));
+  doc.text(
+    `Suma: ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`,
+    boxX + sumBoxW/2, boxY + sumBoxH/2 + 5, { align: 'center' }
+  );
 
-  // 7) stopka
+  // Stopka
   doc.setFontSize(9);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(...colorMuted);
@@ -573,10 +549,7 @@ doc.setFont('Roboto', 'normal');
 
   doc.save('budzet.pdf');
 }
-
-// podmień nasłuch:
 exportPdfBtn?.addEventListener('click', () => {
-  // pozwól pokazać banerek, jeśli pobieranie czcionki chwilę trwa
   if (typeof showActionToast === 'function') {
     showActionToast({ text: 'Przygotowuję PDF…', onOk: null, timeout: 2000 });
   }
@@ -585,7 +558,6 @@ exportPdfBtn?.addEventListener('click', () => {
     alert('Nie udało się wygenerować PDF.');
   });
 });
-
 
 /* ===============================
    PRZYPOMNIENIA (cykliczne + stały toast)
@@ -676,22 +648,21 @@ function cryptoId() { return 'r' + Math.random().toString(36).slice(2) + Date.no
 /* Zapłacone (z listy i z toastu) */
 function handlePaid(rem) {
   let input = prompt(`Kwota do zapłaty za: ${rem.text}`, "0");
-  if (input === null) return; // anulowano
+  if (input === null) return;
   let amount = parseFloat(String(input).replace(',', '.'));
   if (isNaN(amount) || amount <= 0) {
     showActionToast({ text: 'Podaj poprawną kwotę (większą od 0).', warn: true, onOk: null });
     return;
   }
-  // wpis do historii
   entries.push({ desc: rem.text, category: 'Rachunki', amount: -Math.abs(amount), id: Date.now() });
   saveEntries();
   updateUI(true);
 
-  acknowledgeReminder(rem); // po zapłacie – potwierdzamy
+  acknowledgeReminder(rem);
   showActionToast({ text: `Dodano wydatek: ${rem.text} (−${amount.toFixed(2)} zł)` });
 }
 
-/* Potwierdzenie (OK lub po „Zapłacone”) */
+/* Potwierdzenie */
 function acknowledgeReminder(rem) {
   const now = Date.now();
   if (rem.repeat === 'once') {
@@ -750,10 +721,9 @@ function updateReminderUI() {
   });
 }
 
-/* Kolejkowanie toastów przypomnień (po jednym naraz) */
+/* Kolejkowanie toastów przypomnień */
 let reminderQueue = [];
 let processingQueue = false;
-
 function enqueueReminderToast(rem) {
   reminderQueue.push(rem);
   if (!processingQueue) processQueue();
@@ -771,13 +741,13 @@ function processQueue() {
   showActionToast({
     text: `Przypomnienie: ${r.text}`,
     warn: true,
-    timeout: 0, // stały baner
+    timeout: 0,
     onPaid: () => { handlePaid(r); processingQueue = false; processQueue(); },
     onOk:   () => { acknowledgeReminder(r); processingQueue = false; processQueue(); }
   });
 }
 
-/* Sprawdzanie terminów – NIC nie usuwamy automatycznie */
+/* Sprawdzanie terminów */
 function checkReminders() {
   const now = Date.now();
   let changed = false;
@@ -786,7 +756,7 @@ function checkReminders() {
     const due = new Date(r.date).getTime();
     if (due <= now) {
       if (!r.awaitingAck) { r.awaitingAck = true; changed = true; }
-      enqueueReminderToast(r); // pokaż nawet po odświeżeniu
+      enqueueReminderToast(r);
     }
   });
 
@@ -800,7 +770,7 @@ setInterval(checkReminders, 30000);
 // Dodawanie przypomnień
 reminderForm?.addEventListener('submit', () => {
   const text = reminderText.value.trim();
-  const dateVal = reminderDate.value; // lokalne 'YYYY-MM-DDTHH:MM'
+  const dateVal = reminderDate.value;
   const repeat = reminderRepeat?.value || 'once';
   if (!text || !dateVal) return;
 
@@ -818,13 +788,16 @@ reminderForm?.addEventListener('submit', () => {
   showActionToast({ text: `Dodano przypomnienie: ${text} – ${formatDateNoSeconds(iso)}` });
 });
 
-/* ====== Start ====== */
+/* ===============================
+   MOTYW + START
+   =============================== */
 document.addEventListener('DOMContentLoaded', () => {
-  // Historia/wpisy
+  // Historia
   loadEntries();
   updateUI();
-// nagłówek lekko „wjeżdża”
-document.querySelector('h1')?.classList.add('title-anim');
+
+  // tytuł – delikatny wjazd (CSS klasa .title-anim)
+  document.querySelector('h1')?.classList.add('title-anim');
 
   // Przypomnienia
   loadReminders();
@@ -832,33 +805,57 @@ document.querySelector('h1')?.classList.add('title-anim');
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
   }
-  checkReminders(); // pokaż oczekujące od razu
+  checkReminders();
 
-  // Motyw – przywróć zapisany (opcjonalnie)
+  // Motyw – przywróć zapisany
   const savedTheme = localStorage.getItem('theme');
   if (savedTheme === 'dark') {
     document.body.classList.add('dark');
     if (themeToggleBtn) themeToggleBtn.textContent = '☀️ Tryb jasny';
   }
+
+  // Baner czasu/pogody – start i timery
+  updateDateBanner();
+  renderWeatherIntoBanner();                 // dociągnij pogodę od razu
+  setInterval(updateDateBanner, 1000);       // zegar co sekundę
+  setInterval(renderWeatherIntoBanner, 60*60*1000); // pogoda co godzinę
 });
 
-// Przełącznik motywu – zapamiętaj wybór
 themeToggleBtn?.addEventListener('click', () => {
   document.body.classList.toggle('dark');
   const isDark = document.body.classList.contains('dark');
   themeToggleBtn.textContent = isDark ? '☀️ Tryb jasny' : '🌙 Tryb ciemny';
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
 });
-// ====== Pasek z datą i godziną ======
+
+/* ===============================
+   BANER: godzina + pogoda
+   =============================== */
+// powitanie PL
 function polishGreeting(h) {
   if (h >= 5 && h < 12)  return "Dzień dobry";
   if (h >= 12 && h < 18) return "Miłego popołudnia";
   if (h >= 18 && h < 23) return "Dobry wieczór";
   return "Miłej nocy";
 }
+
+// sklejacz: baseText (czas/data) + zapis/odczyt pogody z dataset
+function composeBanner(baseText) {
+  const el = document.getElementById('date-banner') || document.getElementById('daytime-banner');
+  if (!el) return;
+  el.dataset.baseText = baseText;
+  const weather = el.dataset.weatherHtml || '';
+  if (weather) {
+    el.innerHTML = `<span>${baseText}</span><span class="weather-sep"> • </span>${weather}`;
+  } else {
+    el.textContent = baseText;
+  }
+}
+
+// aktualizacja godziny co sekundę
 function updateDateBanner() {
-  const bannerEl = document.getElementById('date-banner') || document.getElementById('daytime-banner');
-  if (!bannerEl) return;
+  const el = document.getElementById('date-banner') || document.getElementById('daytime-banner');
+  if (!el) return;
 
   const now = new Date();
   const h = now.getHours();
@@ -867,21 +864,14 @@ function updateDateBanner() {
   const date = new Intl.DateTimeFormat('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' }).format(now);
   const time = new Intl.DateTimeFormat('pl-PL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now);
 
-  bannerEl.textContent = `${greeting}! Dziś jest ${weekday}, ${date} • ${time}`;
+  const baseText = `${greeting}! Dziś jest ${weekday}, ${date} • ${time}`;
+  composeBanner(baseText);
 
-  // subtelny „puls” – UWAGA: tylko jedna zmienna (bannerEl), żadnego drugiego 'const el'
-  bannerEl.classList.remove('tick');
-  void bannerEl.offsetWidth;  // reset animacji
-  bannerEl.classList.add('tick');
+  // subtelny „puls”
+  el.classList.remove('tick'); void el.offsetWidth; el.classList.add('tick');
 }
 
-
-// uruchom i odświeżaj co sekundę
-document.addEventListener('DOMContentLoaded', () => {
-  updateDaytimeBanner();
-  setInterval(updateDaytimeBanner, 1000);
-});
-// ====== POGODA (WeatherAPI.com) ======
+// POGODA (WeatherAPI.com)
 const WEATHER_API_KEY = '21fe8e6c8b4a4929aba190126250202';
 const WEATHER_CITY    = 'Rogoźno, wielkopolskie';
 const WEATHER_LS_KEY  = 'weather_cache_v1';
@@ -899,7 +889,6 @@ async function fetchWeatherFresh() {
     city: data?.location?.name || '—'
   };
 }
-
 async function getWeatherCached() {
   try {
     const raw = localStorage.getItem(WEATHER_LS_KEY);
@@ -912,65 +901,31 @@ async function getWeatherCached() {
   try {
     localStorage.setItem(WEATHER_LS_KEY, JSON.stringify({
       data: fresh,
-      expiresAt: Date.now() + 45 * 60 * 1000 // 45 minut cache
+      expiresAt: Date.now() + 45 * 60 * 1000 // 45 min cache
     }));
   } catch {}
   return fresh;
 }
-
 async function renderWeatherIntoBanner() {
   const el = document.getElementById('date-banner') || document.getElementById('daytime-banner');
   if (!el) return;
-  // zachowaj istniejący tekst (data+czas) i doklej pogodę po „ • ”
-  // jeśli już jest pogoda – podmień całość
+
+  // zachowaj aktualny baseText (ustawiany co sekundę przez updateDateBanner)
   const baseText = el.dataset.baseText || el.textContent;
   el.dataset.baseText = baseText;
 
   try {
     const w = await getWeatherCached();
-    el.innerHTML = `
-      <span>${baseText}</span>
-      <span class="weather-sep"> • </span>
+    const weatherHtml = `
       <span class="weather-wrap" title="${w.city}">
         <img class="weather-icon" alt="" src="${w.icon}"/>
         ${w.temp}°C ${w.text}
       </span>
     `;
+    el.dataset.weatherHtml = weatherHtml;
+    composeBanner(baseText);
   } catch {
-    // jak API padnie – zostaw samą datę/godzinę
-    el.textContent = baseText;
+    el.dataset.weatherHtml = '';
+    composeBanner(baseText);
   }
 }
-
-// jeśli masz już updateDaytimeBanner/updateDateBanner – podmień, żeby doklejała pogodę
-function polishGreeting(h) {
-  if (h >= 5 && h < 12)  return "Dzień dobry";
-  if (h >= 12 && h < 18) return "Miłego popołudnia";
-  if (h >= 18 && h < 23) return "Dobry wieczór";
-  return "Miłej nocy";
-}
-function updateDateBanner() {
-  const el = document.getElementById('date-banner') || document.getElementById('daytime-banner');
-  if (!el) return;
-  const now = new Date();
-  const h = now.getHours();
-  const greeting = polishGreeting(h);
-  const weekday = new Intl.DateTimeFormat('pl-PL', { weekday: 'long' }).format(now);
-  const date = new Intl.DateTimeFormat('pl-PL', { day: '2-digit', month: 'long', year: 'numeric' }).format(now);
-  const time = new Intl.DateTimeFormat('pl-PL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now);
-  el.textContent = `${greeting}! Dziś jest ${weekday}, ${date} • ${time}`;
-  // po ustawieniu tekstu – dotelepuj pogodę
-  renderWeatherIntoBanner();
-}
-
-// start (zegar co sekundę, pogoda co godzinę)
-document.addEventListener('DOMContentLoaded', () => {
-  updateDateBanner();
-  setInterval(updateDateBanner, 1000);
-  // odśwież pogodę co 60 min (cache i tak pilnuje)
-  setInterval(() => renderWeatherIntoBanner(), 60 * 60 * 1000);
-  // na starcie spróbuj doładować od razu (nie czekając na sekundę)
-  renderWeatherIntoBanner();
-});
-
-
