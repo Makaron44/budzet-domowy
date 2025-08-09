@@ -313,9 +313,14 @@ info.innerHTML = `
   });
 
   // suma globalna
-  const total = entries.reduce((sum, e) => sum + e.amount, 0);
-  totalSpan.textContent = total.toFixed(2);
-  totalSpan.style.color = total >= 0 ? 'var(--positive, green)' : 'var(--negative, red)';
+ const total = entries.reduce((sum, e) => sum + e.amount, 0);
+totalSpan.textContent = total.toFixed(2);
+
+// styl przez klasy (ładniej w light/dark)
+totalSpan.classList.toggle('total-pos', total >= 0);
+totalSpan.classList.toggle('total-neg', total < 0);
+totalSpan.style.color = ''; // wyczyść inline (oddajemy kontrolę CSS)
+
 
   // suma po filtrze (pokazuj gdy filtr aktywny)
   const isDefault =
