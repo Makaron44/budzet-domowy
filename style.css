@@ -510,18 +510,20 @@ body.dark .rem-badge {
 }
 .daytime-banner{
   text-align:center;
-  font-size: 0.98rem;
-  color: #fef76e;
-  background: rgba(255,255,255,0.7);
-  padding: 8px 12px;
+  font-size: 1.05rem;             /* lekko większy tekst */
+  font-weight: 600;               /* pogrubienie */
+  color: #ffffff;                 /* kolor tekstu */
+  background: linear-gradient(135deg, #61c6f8 0%, #1976d2 100%); /* nowy kolor tła */
+  padding: 10px 14px;
   border-radius: 10px;
-  box-shadow: 0 3px 14px rgba(0,0,0,.06);
-  margin-top: -6px;   /* odrobinę bliżej nagłówka */
+  box-shadow: 0 3px 14px rgba(0,0,0,.15);
+  margin-top: -6px;
 }
+
 [data-theme="dark"] .daytime-banner{
-  color:#e7eef7;
-  background: rgba(255,255,255,0.08);
-  box-shadow: 0 3px 14px rgba(0,0,0,.25);
+  color: #ffffff;
+  background: linear-gradient(135deg, #333 0%, #111 100%);
+  box-shadow: 0 3px 14px rgba(0,0,0,.35);
 }
 
 
