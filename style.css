@@ -170,7 +170,7 @@ body.dark #history {
 
 /* Tryb ciemny – kwoty */
 body.dark .amount.negative {
-  color: #ff6b6b; /* jaśniejszy czerwony */
+  color: #b30000; /* ciemny czerwony */
   font-weight: 600;
 }
 
