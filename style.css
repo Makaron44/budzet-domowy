@@ -525,6 +525,34 @@ body.dark .rem-badge {
   background: linear-gradient(135deg, #4caf50 0%, #087f23 100%);
   box-shadow: 0 3px 14px rgba(0,0,0,.35);
 }
+/* Pogoda w banerze daty */
+.date-banner .weather-wrap,
+.daytime-banner .weather-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-banner .weather-icon,
+.daytime-banner .weather-icon {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.2));
+}
+
+.date-banner .weather-sep,
+.daytime-banner .weather-sep {
+  opacity: .85;
+  margin: 0 6px;
+}
+
+/* w trybie ciemnym ikona niech pozostanie wyraźna */
+[data-theme="dark"] .date-banner .weather-icon,
+[data-theme="dark"] .daytime-banner .weather-icon {
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
+}
+
 
 
 /* delikatny „skok” wartości przy końcówce (już uwzględnione w JS: cubic-bezier) */
