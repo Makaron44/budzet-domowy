@@ -475,10 +475,12 @@ document.getElementById('theme-toggle')?.addEventListener('click', ()=>{
 /* =========================================================
    SUPABASE – konfiguracja, auth, sync, realtime
    ========================================================= */
-const SUPABASE_URL = 'https://kmcfmyrezzyejowrrbqy.supabase.co';       // <--- UZUPEŁNIJ
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttY2ZteXJlenp5ZWpvd3JyYnF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3NDUwMDgsImV4cCI6MjA3MDMyMTAwOH0.-IssqghD3mZkVG906Cao8udVQbzhCUEPQwIGG3nbg9s
-';                          // <--- UZUPEŁNIJ
-const supabase = window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = 'https://kmcfmyrezzyejowrrbqy.supabase.co'
+const supabaseKey = process.env.SUPABASE_KEY
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 let currentUser=null;
 
