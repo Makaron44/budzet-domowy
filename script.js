@@ -1,825 +1,622 @@
-// ====== Elementy z DOM ======
-const descInput = document.getElementById('desc');
-const categoryInput = document.getElementById('category');
-const amountInput = document.getElementById('amount');
-const historyList = document.getElementById('history');
-const totalSpan = document.getElementById('total');
-const incomeBtn = document.getElementById('income-btn');
-const expenseBtn = document.getElementById('expense-btn');
+/* =========================================================
+   Budżet domowy Macieja – FULL JS z chmurą (Supabase)
+   ========================================================= */
 
-const exportCsvBtn = document.getElementById('export-csv-btn');
-const exportPdfBtn  = document.getElementById('export-pdf-btn');
+/* ============ DOM (zastane w Twoim HTML) ============ */
+const descInput       = document.getElementById('desc');
+const categoryInput   = document.getElementById('category');
+const amountInput     = document.getElementById('amount');
+const historyList     = document.getElementById('history');
+const totalSpan       = document.getElementById('total');
+const incomeBtn       = document.getElementById('income-btn');
+const expenseBtn      = document.getElementById('expense-btn');
+const exportCsvBtn    = document.getElementById('export-csv-btn');
+const exportPdfBtn    = document.getElementById('export-pdf-btn');
+const toastRoot       = document.getElementById('toast');
 
-// --- Filtry (opcjonalnie) ---
-const filterType = document.getElementById('filter-type');         // all | income | expense
-const filterCategory = document.getElementById('filter-category');  // all | nazwa kategorii
-const filterResetBtn = document.getElementById('filter-reset');
-const filteredSummary = document.getElementById('filtered-summary');
-const filteredTotalSpan = document.getElementById('filtered-total');
+const filterTypeSel   = document.getElementById('filter-type');
+const filterCatSel    = document.getElementById('filter-category');
+const filterResetBtn  = document.getElementById('filter-reset');
+const filteredWrap    = document.getElementById('filtered-summary');
+const filteredTotalEl = document.getElementById('filtered-total');
 
-// --- „Wykresy” CSS (kontenery w HTML) ---
-const chartCatsRoot   = document.getElementById('chart-categories'); // Wydatki wg kategorii
-const chartMonthsRoot = document.getElementById('chart-months');     // Bilans miesięczny
+const reminderForm    = document.getElementById('reminder-form');
+const reminderText    = document.getElementById('reminder-text');
+const reminderDate    = document.getElementById('reminder-date');
+const reminderRepeat  = document.getElementById('reminder-repeat');
+const reminderList    = document.getElementById('reminder-list');
 
-// --- Przełącznik motywu ---
-const themeToggleBtn = document.getElementById('theme-toggle');
+/* ============ DODATKOWY UI – status chmury + Sync Now ============ */
+(function mountCloudToolbar(){
+  const container = document.querySelector('.container') || document.body;
+  const bar = document.createElement('div');
+  bar.id = 'cloud-toolbar';
+  bar.style.display = 'flex';
+  bar.style.gap = '10px';
+  bar.style.alignItems = 'center';
+  bar.style.justifyContent = 'space-between';
+  bar.style.margin = '6px 0 2px';
 
-// ====== Stan + localStorage (historia) ======
-const STORAGE_KEY = 'budget_entries_v1';
-let entries = [];
+  const left = document.createElement('div');
+  left.style.display = 'flex';
+  left.style.gap = '10px';
+  left.style.alignItems = 'center';
 
-// Zapis / odczyt wpisów
-function saveEntries() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); }
-  catch (e) { console.warn('Nie udało się zapisać do localStorage:', e); }
+  const badge = document.createElement('span');
+  badge.id = 'cloud-badge';
+  badge.style.padding = '6px 10px';
+  badge.style.borderRadius = '999px';
+  badge.style.fontSize = '0.9em';
+  badge.style.background = '#eef2ff';
+  badge.style.color = '#334';
+  badge.textContent = '🔄 Łączenie…';
+  left.appendChild(badge);
+
+  const right = document.createElement('div');
+  const btn = document.createElement('button');
+  btn.id = 'sync-now-btn';
+  btn.textContent = 'Synchronizuj teraz';
+  btn.style.padding = '8px 12px';
+  btn.style.border = 'none';
+  btn.style.borderRadius = '8px';
+  btn.style.cursor = 'pointer';
+  btn.style.background = 'linear-gradient(135deg,#61c6f8,#1976d2)';
+  btn.style.color = '#fff';
+  btn.onclick = () => manualSync();
+  right.appendChild(btn);
+
+  bar.appendChild(left);
+  bar.appendChild(right);
+  const h1 = container.querySelector('h1');
+  (h1?.nextSibling ? container.insertBefore(bar, h1.nextSibling) : container.prepend(bar));
+})();
+
+function setCloudBadge(state, text){
+  const el = document.getElementById('cloud-badge');
+  if (!el) return;
+  if (state === 'online') {
+    el.style.background = '#e8fff1';
+    el.style.color = '#17633d';
+    el.textContent = text || '🟢 Online';
+  } else if (state === 'sync') {
+    el.style.background = '#fff7e6';
+    el.style.color = '#7a4b00';
+    el.textContent = text || '🔄 Synchronizuję…';
+  } else if (state === 'offline') {
+    el.style.background = '#ffecec';
+    el.style.color = '#7a1f1f';
+    el.textContent = text || '🔴 Offline';
+  } else {
+    el.style.background = '#eef2ff';
+    el.style.color = '#334';
+    el.textContent = text || 'ℹ️ Status nieznany';
+  }
 }
-function loadEntries() {
+
+/* ============ Stan lokalny + localStorage ============ */
+const STORAGE_KEY_ENTRIES   = 'budget_entries_v2';
+const STORAGE_KEY_REMINDERS = 'budget_reminders_v4';
+
+let entries   = [];  // {id, desc, category, amount, updatedAt?}
+let reminders = [];  // {id, text, date, repeat, awaitingAck, updatedAt?}
+
+function saveEntries(){ localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(entries)); }
+function saveReminders(){ localStorage.setItem(STORAGE_KEY_REMINDERS, JSON.stringify(reminders)); }
+
+function loadEntriesLS(){
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY_ENTRIES);
     if (!raw) return;
     const data = JSON.parse(raw);
     if (Array.isArray(data)) {
-      entries = data
-        .filter(e => e && typeof e.desc === 'string' && typeof e.category === 'string' && typeof e.amount === 'number')
-        .map(e => ({ desc: e.desc, category: e.category, amount: e.amount, id: e.id || Date.now() }));
+      entries = data.map(e => ({
+        id: e.id || ('loc-'+Date.now()),
+        desc: String(e.desc||''),
+        category: String(e.category||''),
+        amount: Number(e.amount||0),
+        updatedAt: e.updatedAt || Date.now(),
+      }));
     }
-  } catch (e) { console.warn('Nie udało się odczytać z localStorage:', e); }
+  } catch(e){ console.warn('loadEntriesLS', e); }
 }
-
-// Dodawanie / usuwanie wpisów
-function addEntry(type) {
-  const desc = descInput.value.trim();
-  const category = categoryInput.value;
-  let amountStr = (amountInput.value || '').replace(',', '.');
-  let amount = parseFloat(amountStr);
-
-  if (!desc || !category || isNaN(amount) || amount <= 0) return;
-  if (type === 'expense') amount = -amount;
-
-  entries.push({ desc, category, amount, id: Date.now() });
-  saveEntries();
-
-  descInput.value = '';
-  categoryInput.selectedIndex = 0;
-  amountInput.value = '';
-
-  updateUI(true);
-}
-incomeBtn?.addEventListener('click', () => addEntry('income'));
-expenseBtn?.addEventListener('click', () => addEntry('expense'));
-
-function removeEntry(index) {
-  if (index < 0) return;
-  entries.splice(index, 1);
-  saveEntries();
-  updateUI();
-}
-
-/* ===============================
-   FILTROWANIE
-   =============================== */
-function getFilteredEntries() {
-  let list = entries.slice();
-
-  const type = filterType?.value || 'all';
-  if (type === 'income')  list = list.filter(e => e.amount > 0);
-  if (type === 'expense') list = list.filter(e => e.amount < 0);
-
-  const cat = filterCategory?.value || 'all';
-  if (cat !== 'all') list = list.filter(e => e.category === cat);
-
-  return list;
-}
-filterType?.addEventListener('change', () => updateUI());
-filterCategory?.addEventListener('change', () => updateUI());
-filterResetBtn?.addEventListener('click', () => {
-  if (filterType) filterType.value = 'all';
-  if (filterCategory) filterCategory.value = 'all';
-  updateUI();
-});
-
-/* ===============================
-   „WYKRESY” CSS — RENDER
-   =============================== */
-function renderCategoryChart() {
-  if (!chartCatsRoot) return;
-  chartCatsRoot.innerHTML = '';
-
-  // Suma WYDATKÓW (ujemne) per kategoria
-  const sums = {};
-  entries.forEach(e => {
-    if (e.amount < 0) {
-      const cat = e.category || 'Inne';
-      const val = Math.abs(e.amount);
-      sums[cat] = (sums[cat] || 0) + val;
+function loadRemindersLS(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_REMINDERS);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (Array.isArray(data)) {
+      reminders = data.map(r => ({
+        id: r.id || ('loc-'+Date.now()),
+        text: String(r.text||''),
+        date: r.date, repeat: r.repeat || 'once',
+        awaitingAck: !!r.awaitingAck,
+        updatedAt: r.updatedAt || Date.now(),
+      }));
     }
+  } catch(e){ console.warn('loadRemindersLS', e); }
+}
+
+/* ============ UI – lista + suma + filtry ============ */
+function moneyPL(n){
+  const s = Math.abs(n).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return (n>=0?`+${s}`:`-${s}`)+' zł';
+}
+
+function applyFilters(list){
+  const t = filterTypeSel?.value || 'all';
+  const c = filterCatSel?.value || 'all';
+  return list.filter(e=>{
+    if (t==='income' && e.amount<0) return false;
+    if (t==='expense' && e.amount>=0) return false;
+    if (c!=='all' && e.category!==c) return false;
+    return true;
   });
+}
 
-  const cats = Object.keys(sums);
-  if (cats.length === 0) {
-    chartCatsRoot.innerHTML = `<div class="chart-empty">Brak wydatków do pokazania.</div>`;
+function updateFilteredSummary(){
+  if (!filteredWrap) return;
+  const arr = applyFilters(entries);
+  if (filterTypeSel.value==='all' && filterCatSel.value==='all') {
+    filteredWrap.style.display='none';
     return;
   }
-
-  const max = Math.max(...cats.map(c => sums[c]));
-  cats.sort((a,b) => sums[b] - sums[a]); // większe na górze
-
-  cats.forEach(cat => {
-    const percent = max > 0 ? Math.round((sums[cat] / max) * 100) : 0;
-    const row = document.createElement('div');
-    row.className = 'chart-row';
-    row.innerHTML = `
-      <div class="chart-label anim-label">${cat}</div>
-      <div class="chart-bar">
-        <div class="chart-fill expense" style="width:${percent}%"></div>
-      </div>
-      <div class="chart-value anim-value">-${sums[cat].toFixed(2)} zł</div>
-    `;
-    chartCatsRoot.appendChild(row);
-  });
+  const sum = arr.reduce((s,e)=>s+e.amount,0);
+  filteredTotalEl.textContent = sum.toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2});
+  filteredTotalEl.style.color = sum>=0?'#19994c':'#e53935';
+  filteredWrap.style.display='block';
 }
 
-function yyyymm(ts) {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-}
-function labelMonth(ym) {
-  const [y,m] = ym.split('-');
-  const d = new Date(Number(y), Number(m)-1, 1);
-  return d.toLocaleDateString(undefined, { month:'short', year:'numeric' });
-}
-
-function renderMonthlyChart() {
-  if (!chartMonthsRoot) return;
-  chartMonthsRoot.innerHTML = '';
-
-  // Agregacja po miesiącach
-  const map = new Map();
-  entries.forEach(e => {
-    const key = yyyymm(e.id || Date.now());
-    const cur = map.get(key) || { income:0, expense:0, saldo:0 };
-    if (e.amount >= 0) cur.income += e.amount;
-    else cur.expense += Math.abs(e.amount);
-    cur.saldo += e.amount;
-    map.set(key, cur);
-  });
-
-  if (map.size === 0) {
-    chartMonthsRoot.innerHTML = `<div class="chart-empty">Brak danych miesięcznych.</div>`;
-    return;
-  }
-
-  const rows = [...map.entries()].sort((a,b) => a[0].localeCompare(b[0]));
-
-  let max = 0;
-  rows.forEach(([,v]) => {
-    max = Math.max(max, v.income, v.expense, Math.abs(v.saldo));
-  });
-  if (max === 0) max = 1;
-
-  rows.forEach(([ym, v]) => {
-    const pIncome  = Math.round((v.income / max) * 100);
-    const pExpense = Math.round((v.expense / max) * 100);
-    const pSaldo   = Math.round((Math.abs(v.saldo) / max) * 100);
-
-    const row = document.createElement('div');
-    row.className = 'chart-row chart-month';
-    row.innerHTML = `
-      <div class="chart-label anim-label">${labelMonth(ym)}</div>
-      <div class="chart-bars3">
-        <div class="chart-bar thin"><div class="chart-fill income"  style="width:${pIncome}%"></div></div>
-        <div class="chart-bar thin"><div class="chart-fill expense" style="width:${pExpense}%"></div></div>
-        <div class="chart-bar thin"><div class="chart-fill saldo ${v.saldo>=0?'pos':'neg'}" style="width:${pSaldo}%"></div></div>
-      </div>
-      <div class="chart-values">
-        <span class="v income anim-value">+${v.income.toFixed(2)}</span>
-        <span class="v expense anim-value">-${v.expense.toFixed(2)}</span>
-        <span class="v saldo ${v.saldo>=0?'pos':'neg'} anim-value">=${v.saldo>=0?'+':''}${v.saldo.toFixed(2)}</span>
-      </div>
-    `;
-    chartMonthsRoot.appendChild(row);
-  });
-}
-
-/* ===============================
-   ANIMACJE: przygotowanie i start „na widoku”
-   =============================== */
-function prepareBarsForAnimation(root) {
-  if (!root) return;
-  root.classList.remove('in-view');
-
-  const rows = Array.from(root.querySelectorAll('.chart-row'));
-  rows.forEach((row, idx) => {
-    row.style.setProperty('--row-delay', (idx * 200) + 'ms'); // fala: 0ms, 150ms, 300ms...
-  });
-
-  // słupki — wolniej i z opóźnieniem wg wiersza
-  root.querySelectorAll('.chart-fill').forEach(el => {
-    el.classList.remove('animate');
-    el.style.transition = 'transform 2.2s ease-out var(--row-delay)';
-  });
-
-  // etykiety — fade + lekki wjazd
-  root.querySelectorAll('.anim-label').forEach(el => {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(6px) scale(.98)';
-    el.style.transition = 'opacity .7s ease calc(var(--row-delay) + 150ms), transform .7s ease calc(var(--row-delay) + 150ms)';
-  });
-
-  // wartości — fade + „skok”
-  root.querySelectorAll('.anim-value').forEach(el => {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(6px) scale(.98)';
-    el.style.transition = 'opacity .7s ease calc(var(--row-delay) + 320ms), transform .7s cubic-bezier(.2,.8,.2,1) calc(var(--row-delay) + 320ms)';
-  });
-}
-
-function observeAnimateOnView(root) {
-  if (!root) return;
-  const observer = new IntersectionObserver((entries, obs) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        root.classList.add('in-view'); // uruchamia CSS etykiet/wartości
-        // uruchom słupki
-        root.querySelectorAll('.chart-fill').forEach(el => el.classList.add('animate'));
-        // odpal fade-in tekstów (przez .in-view + transition ustawione wyżej)
-        root.querySelectorAll('.anim-label, .anim-value').forEach(el => {
-          requestAnimationFrame(() => {
-            el.style.opacity = '1';
-            el.style.transform = 'none';
-          });
-        });
-        obs.disconnect(); // animuj tylko raz
-      }
-    });
-  }, { threshold: 0.3 }); // 30% kontenera w widoku
-  observer.observe(root);
-}
-
-/* ===============================
-   RENDER HISTORII + SUM + WYKRESY
-   =============================== */
-function updateUI(animateLastAdded = false) {
-  historyList.innerHTML = '';
-
-  const filtered = getFilteredEntries();
-
-  const reversed = filtered.slice().reverse();
-  reversed.forEach((entry, i) => {
+function updateUI(animateLast=false){
+  historyList.innerHTML='';
+  const list = entries.slice().reverse(); // najnowsze u góry
+  list.forEach((e,i)=>{
     const li = document.createElement('li');
 
     const info = document.createElement('div');
-    const amountClass = entry.amount >= 0 ? 'positive' : 'negative';
-    const sign = entry.amount > 0 ? '+' : '';
-    info.innerHTML = `<strong>[${entry.category}]</strong> ${entry.desc}: 
-      <span class="amount ${amountClass}">${sign}${entry.amount} zł</span>`;
+    const s = e.amount>=0?'+':'';
+    info.innerHTML = `<strong>[${e.category}]</strong> ${e.desc}: <span class="amount ${e.amount>=0?'positive':'negative'}">${s}${e.amount} zł</span>`;
 
-    const removeBtn = document.createElement('button');
-    removeBtn.innerHTML = '🗑️';
-    removeBtn.title = 'Usuń wpis';
-
-    // znajdź indeks oryginalny (bo reversed/filtry to te same referencje obiektów)
-    const originalIndex = entries.lastIndexOf(entry);
-
-    removeBtn.onclick = () => {
+    const btn = document.createElement('button');
+    btn.innerHTML = '🗑️';
+    const origIdx = entries.length - 1 - i;
+    btn.onclick = () => {
       li.classList.add('removing');
-      setTimeout(() => removeEntry(originalIndex), 250);
+      setTimeout(()=> removeEntry(origIdx), 220);
     };
 
-    if (animateLastAdded && i === 0) li.classList.add('added');
-
-    li.appendChild(info);
-    li.appendChild(removeBtn);
+    if (animateLast && i===0) li.classList.add('added');
+    li.append(info, btn);
     historyList.appendChild(li);
   });
 
-  // suma globalna
-  const total = entries.reduce((sum, e) => sum + e.amount, 0);
+  const filtered = applyFilters(entries);
+  const total = filtered.reduce((s,e)=>s+e.amount,0);
   totalSpan.textContent = total.toFixed(2);
-  totalSpan.style.color = total >= 0 ? 'var(--positive, green)' : 'var(--negative, red)';
+  totalSpan.style.color = total>=0?'green':'red';
 
-  // suma po filtrze (pokazuj gdy filtr aktywny)
-  const isDefault =
-    (!filterType || filterType.value === 'all') &&
-    (!filterCategory || filterCategory.value === 'all');
-
-  if (!isDefault && filteredSummary && filteredTotalSpan) {
-    const filteredSum = filtered.reduce((s, e) => s + e.amount, 0);
-    filteredTotalSpan.textContent = filteredSum.toFixed(2);
-    filteredTotalSpan.style.color = filteredSum >= 0 ? 'var(--positive, green)' : 'var(--negative, red)';
-    filteredSummary.style.display = 'block';
-  } else if (filteredSummary) {
-    filteredSummary.style.display = 'none';
-  }
-
-  // Wykresy
-  renderCategoryChart();
-  renderMonthlyChart();
-
-  // Przygotuj animacje i start dopiero na widoku
-  prepareBarsForAnimation(chartCatsRoot);
-  prepareBarsForAnimation(chartMonthsRoot);
-  observeAnimateOnView(chartCatsRoot);
-  observeAnimateOnView(chartMonthsRoot);
+  updateFilteredSummary();
 }
 
-/* ===============================
-   EKSPORT CSV
-   =============================== */
-function exportToCSV() {
-  if (!entries.length) {
-    showActionToast ? showActionToast({ text: 'Brak danych do eksportu.', warn: true }) : alert('Brak danych do eksportu.');
-    return;
-  }
+/* ============ Dodawanie/usuwanie wpisów ============ */
+incomeBtn?.addEventListener('click', ()=> addEntry('income'));
+expenseBtn?.addEventListener('click', ()=> addEntry('expense'));
 
-  let csv = 'Data,Kategoria,Opis,Kwota\n';
-  entries.forEach(e => {
-    const date = new Date(e.id).toLocaleString();
-    const line = `"${date}","${e.category}","${String(e.desc).replace(/"/g,'""')}",${e.amount}`;
-    csv += line + '\n';
-  });
+async function addEntry(type){
+  const desc = (descInput.value||'').trim();
+  const category = categoryInput.value;
+  let amount = parseFloat(String(amountInput.value||'').replace(',','.'));
+  if (!desc || !category || isNaN(amount) || amount<=0) return;
+  if (type==='expense') amount = -amount;
 
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
+  const row = { id:'loc-'+Date.now(), desc, category, amount, updatedAt: Date.now() };
+  entries.push(row);
+  saveEntries(); updateUI(true);
 
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'budzet.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
-}
-exportCsvBtn?.addEventListener('click', exportToCSV);
+  descInput.value=''; categoryInput.selectedIndex=0; amountInput.value='';
 
-/* ===============================
-   EKSPORT PDF (jsPDF)
-   =============================== */
-/* ========== PDF: ładny układ + polskie znaki (Roboto) ========== */
-
-// helpers
-function abToBase64(ab) {
-  let binary = '';
-  const bytes = new Uint8Array(ab);
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
+  // push do chmury (optymistycznie)
+  try { await cloudInsertEntry(row); } catch(e){ console.warn(e); }
 }
 
-async function addLocalFont(doc, path, family, style='normal') {
-  const res = await fetch(path); // lokalnie: /fonts/Roboto-Regular.ttf
-  if (!res.ok) throw new Error('Nie mogę pobrać fontu: ' + path);
-  const b64 = abToBase64(await res.arrayBuffer());
-  const filename = path.split('/').pop();
-  doc.addFileToVFS(filename, b64);
-  doc.addFont(filename, family, style);
+async function removeEntry(index){
+  const row = entries[index];
+  entries.splice(index,1);
+  saveEntries(); updateUI();
+  try { await cloudDeleteEntry(row); } catch(e){ console.warn(e); }
 }
 
-// formatuj kwotę z separatorem i dwoma miejscami
-function money(n) {
-  const sign = n >= 0 ? '+' : '−';
-  return `${sign}${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-async function exportToPDF() {
-  if (!entries.length) {
-    (typeof showActionToast === 'function')
-      ? showActionToast({ text: 'Brak danych do eksportu.', warn: true })
-      : alert('Brak danych do eksportu.');
-    return;
-  }
-
-  const { jsPDF } = window.jspdf || {};
-  if (!jsPDF) {
-    alert('Nie można załadować generatora PDF. Sprawdź tag <script> do jsPDF.');
-    return;
-  }
-
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-
-  // 1) czcionki z polskimi znakami
-  try {
-    // w exportToPDF przed rysowaniem:
-await addLocalFont(doc, './fonts/Roboto-Regular.ttf', 'Roboto', 'normal');
-await addLocalFont(doc, './fonts/Roboto-Bold.ttf',    'Roboto', 'bold');
-doc.setFont('Roboto', 'normal');
-  } catch (e) {
-    console.warn('Font Roboto nie został wczytany, używam domyślnej:', e);
-  }
-
-  // 2) stałe i kolory
-  const margin = 56;
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const tableTop = 120;
-  const rowH = 22;
-
-  const colorText = [34, 34, 34];
-  const colorMuted = [110, 117, 126];
-  const colorLine = [210, 215, 221];
-  const colorHeaderBg = [245, 247, 250];
-  const green = [25, 153, 76];
-  const red = [229, 57, 53];
-  const blue = [33, 150, 243];
-
-  // 3) nagłówek
-  doc.setFontSize(22);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(...colorText);
-  doc.text('Budżet domowy Macieja', margin, 64);
-
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'normal');
-  doc.setTextColor(...colorMuted);
-  doc.text(`Wygenerowano: ${new Date().toLocaleString()}`, margin, 84);
-
-  // 4) nagłówki kolumn
-  const col = {
-    date:  margin,
-    cat:   margin + 140,
-    desc:  margin + 260,
-    amtR:  pageW - margin
-  };
-
-  // tło pod nagłówkiem
-  doc.setFillColor(...colorHeaderBg);
-  doc.rect(margin - 8, tableTop - 18, pageW - margin * 2 + 16, 28, 'F');
-
-  doc.setFontSize(12);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(...colorText);
-  doc.text('Data',     col.date, tableTop);
-  doc.text('Kategoria',col.cat,  tableTop);
-  doc.text('Opis',     col.desc, tableTop);
-  doc.text('Kwota',    col.amtR, tableTop, { align: 'right' });
-
-  // linia pod nagłówkiem
-  doc.setDrawColor(...colorLine);
-  doc.setLineWidth(0.8);
-  doc.line(margin, tableTop + 6, pageW - margin, tableTop + 6);
-
-  // 5) wiersze
-  doc.setFontSize(11);
-  doc.setFont(undefined, 'normal');
-  doc.setTextColor(...colorText);
-
-  let y = tableTop + 26;
-  const rows = entries.slice();
-
-  rows.forEach((e, idx) => {
-    if (y > pageH - 96) {
-      doc.addPage();
-      y = 64;
-
-      // przenieś nagłówki na nową stronę
-      doc.setFillColor(...colorHeaderBg);
-      doc.rect(margin - 8, y - 18, pageW - margin * 2 + 16, 28, 'F');
-
-      doc.setFont(undefined, 'bold');
-      doc.setFontSize(12);
-      doc.setTextColor(...colorText);
-      doc.text('Data',     col.date, y);
-      doc.text('Kategoria',col.cat,  y);
-      doc.text('Opis',     col.desc, y);
-      doc.text('Kwota',    col.amtR, y, { align: 'right' });
-
-      doc.setDrawColor(...colorLine);
-      doc.setLineWidth(0.8);
-      doc.line(margin, y + 6, pageW - margin, y + 6);
-
-      doc.setFont(undefined, 'normal');
-      doc.setFontSize(11);
-      doc.setTextColor(...colorText);
-      y += 26;
-    }
-
-    // zebra
-    if (idx % 2 === 0) {
-      doc.setFillColor(252, 253, 255);
-      doc.rect(margin - 8, y - 16, pageW - margin * 2 + 16, rowH, 'F');
-    }
-
-    const dateStr = new Date(e.id).toLocaleString();
-    const amountStr = money(e.amount);
-
-    // dane
-    doc.text(dateStr, col.date, y);
-    doc.text(e.category, col.cat, y);
-
-    // opis — przytnij szerokość
-    const maxDescW = (col.amtR - 12) - col.desc;
-    const descLines = doc.splitTextToSize(String(e.desc), maxDescW);
-    doc.text(descLines[0], col.desc, y);
-
-    // kwota prawa, kolor +/- 
-    if (e.amount >= 0) doc.setTextColor(...green); else doc.setTextColor(...red);
-    doc.text(`${amountStr} zł`, col.amtR, y, { align: 'right' });
-    doc.setTextColor(...colorText);
-
-    // kolejne linie opisu pod spodem
-    for (let i = 1; i < descLines.length; i++) {
-      y += rowH - 6;
-      doc.text(descLines[i], col.desc, y);
-    }
-    y += rowH;
-  });
-
-  // 6) suma w ładnym boxie po prawej
-  const total = entries.reduce((s, e) => s + e.amount, 0);
-  if (y > pageH - 96) { doc.addPage(); y = 64; }
-
-  const sumBoxW = 220, sumBoxH = 40;
-  const boxX = pageW - margin - sumBoxW;
-  const boxY = y + 8;
-
-  doc.setFillColor(245, 250, 245);
-  doc.setDrawColor(220, 235, 222);
-  doc.roundedRect(boxX, boxY, sumBoxW, sumBoxH, 6, 6, 'FD');
-
-  doc.setFont(undefined, 'bold');
-  doc.setFontSize(14);
-  doc.setTextColor(...(total >= 0 ? green : red));
-  doc.text(`Suma: ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`,
-           boxX + sumBoxW/2, boxY + sumBoxH/2 + 5, { align: 'center' });
-
-  // 7) stopka
-  doc.setFontSize(9);
-  doc.setFont(undefined, 'normal');
-  doc.setTextColor(...colorMuted);
-  doc.text('Budżet domowy – wygenerowano w przeglądarce', margin, pageH - 24);
-
-  doc.save('budzet.pdf');
-}
-
-// podmień nasłuch:
-exportPdfBtn?.addEventListener('click', () => {
-  // pozwól pokazać banerek, jeśli pobieranie czcionki chwilę trwa
-  if (typeof showActionToast === 'function') {
-    showActionToast({ text: 'Przygotowuję PDF…', onOk: null, timeout: 2000 });
-  }
-  exportToPDF().catch(err => {
-    console.error(err);
-    alert('Nie udało się wygenerować PDF.');
-  });
-});
-
-
-/* ===============================
-   PRZYPOMNIENIA (cykliczne + stały toast)
-   =============================== */
-const reminderForm = document.getElementById('reminder-form');
-const reminderText = document.getElementById('reminder-text');
-const reminderDate = document.getElementById('reminder-date');
-const reminderRepeat = document.getElementById('reminder-repeat');
-const reminderList = document.getElementById('reminder-list');
-const toastRoot = document.getElementById('toast');
-
-const REMINDERS_KEY = 'budget_reminders_v3';
-let reminders = [];
-
-/* ---- Toasty akcyjne (2 przyciski) ---- */
-let toastOpen = false;
-function showActionToast({ text, onPaid, onOk, warn = false, timeout = 0 }) {
-  if (!toastRoot) { alert(text); if (onOk) onOk(); return; }
-  toastRoot.innerHTML = '';
+/* ============ Toasty (OK + Zapłacone) ============ */
+let toastOpen=false;
+function showActionToast({text,onPaid,onOk,warn=false,timeout=0}){
+  if (!toastRoot){ alert(text); if(onOk)onOk(); return; }
+  toastRoot.innerHTML='';
   const box = document.createElement('div');
-  box.className = 'toast-msg' + (warn ? ' warn' : '');
-  const span = document.createElement('span');
-  span.textContent = text;
+  box.className = 'toast-msg'+(warn?' warn':'');
+  const span = document.createElement('span'); span.textContent = text;
 
-  const right = document.createElement('div');
-  right.style.display = 'flex';
-  right.style.gap = '8px';
-
-  if (onPaid) {
+  const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px';
+  if (onPaid){
     const paid = document.createElement('button');
-    paid.className = 'toast-close';
-    paid.textContent = 'Zapłacone ✔️';
-    paid.onclick = () => { hideToast(); onPaid && onPaid(); };
+    paid.className='toast-close'; paid.textContent='Zapłacone ✔️';
+    paid.onclick=()=>{ hideToast(); onPaid(); };
     right.appendChild(paid);
   }
-
   const ok = document.createElement('button');
-  ok.className = 'toast-close';
-  ok.textContent = 'OK';
-  ok.onclick = () => { hideToast(); onOk && onOk(); };
-
-  box.appendChild(span);
-  box.appendChild(right);
+  ok.className='toast-close'; ok.textContent='OK';
+  ok.onclick=()=>{ hideToast(); onOk && onOk(); };
   right.appendChild(ok);
 
+  box.append(span,right);
   toastRoot.appendChild(box);
-  toastRoot.style.display = 'block';
-  toastOpen = true;
-
-  if (timeout && timeout > 0) {
-    setTimeout(() => { if (toastOpen) { hideToast(); onOk && onOk(); } }, timeout);
-  }
+  toastRoot.style.display='block';
+  toastOpen=true;
+  if (timeout>0) setTimeout(()=>{ if(toastOpen){ hideToast(); onOk&&onOk(); } }, timeout);
 }
-function hideToast() {
-  toastRoot.style.display = 'none';
-  toastRoot.innerHTML = '';
-  toastOpen = false;
-}
+function hideToast(){ toastOpen=false; toastRoot.style.display='none'; toastRoot.innerHTML=''; }
 
-/* Storage przypomnień */
-function saveReminders() { localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders)); }
-function loadReminders() {
-  try {
-    const raw = localStorage.getItem(REMINDERS_KEY);
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    if (Array.isArray(data)) reminders = data;
-  } catch {}
-}
-
-/* Helpers przypomnień */
-function formatDateNoSeconds(iso) {
+/* ============ Przypomnienia ============ */
+function formatDateNoSeconds(iso){
   const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit'
-  });
+  return d.toLocaleString(undefined,{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 }
-function nextDateISO(iso, repeat) {
+function nextDateISO(iso,repeat){
   const d = new Date(iso);
-  if (repeat === 'weekly') d.setDate(d.getDate() + 7);
-  else if (repeat === 'monthly') d.setMonth(d.getMonth() + 1);
-  else if (repeat === 'yearly') d.setFullYear(d.getFullYear() + 1);
+  if (repeat==='weekly') d.setDate(d.getDate()+7);
+  else if (repeat==='monthly') d.setMonth(d.getMonth()+1);
+  else if (repeat==='yearly') d.setFullYear(d.getFullYear()+1);
   return d.toISOString();
 }
-function cryptoId() { return 'r' + Math.random().toString(36).slice(2) + Date.now().toString(36); }
 
-/* Zapłacone (z listy i z toastu) */
-function handlePaid(rem) {
-  let input = prompt(`Kwota do zapłaty za: ${rem.text}`, "0");
-  if (input === null) return; // anulowano
-  let amount = parseFloat(String(input).replace(',', '.'));
-  if (isNaN(amount) || amount <= 0) {
-    showActionToast({ text: 'Podaj poprawną kwotę (większą od 0).', warn: true, onOk: null });
-    return;
-  }
-  // wpis do historii
-  entries.push({ desc: rem.text, category: 'Rachunki', amount: -Math.abs(amount), id: Date.now() });
-  saveEntries();
-  updateUI(true);
-
-  acknowledgeReminder(rem); // po zapłacie – potwierdzamy
-  showActionToast({ text: `Dodano wydatek: ${rem.text} (−${amount.toFixed(2)} zł)` });
-}
-
-/* Potwierdzenie (OK lub po „Zapłacone”) */
-function acknowledgeReminder(rem) {
-  const now = Date.now();
-  if (rem.repeat === 'once') {
-    reminders = reminders.filter(x => x.id !== rem.id);
-  } else {
-    let next = nextDateISO(rem.date, rem.repeat);
-    while (new Date(next).getTime() <= now) next = nextDateISO(next, rem.repeat);
-    rem.date = next;
-    delete rem.awaitingAck;
-  }
-  saveReminders();
-  updateReminderUI();
-}
-
-/* UI przypomnień */
-function updateReminderUI() {
-  reminderList.innerHTML = '';
-  reminders.sort((a, b) => new Date(a.date) - new Date(b.date));
-  reminders.forEach(r => {
+function updateReminderUI(){
+  reminderList.innerHTML='';
+  reminders.sort((a,b)=> new Date(a.date)-new Date(b.date));
+  reminders.forEach(r=>{
     const li = document.createElement('li');
 
     const info = document.createElement('div');
-    info.className = 'rem-info';
+    info.className='rem-info';
     const title = document.createElement('div');
-    title.textContent = r.text + (r.awaitingAck ? ' (oczekuje potwierdzenia)' : '');
+    title.textContent = r.text + (r.awaitingAck?' (oczekuje potwierdzenia)':'');
     const meta = document.createElement('div');
-    meta.className = 'rem-meta';
-    const badge = r.repeat !== 'once'
-      ? `<span class="rem-badge">${r.repeat === 'monthly' ? 'Co miesiąc' : r.repeat === 'weekly' ? 'Co tydzień' : 'Co rok'}</span>`
-      : '';
+    meta.className='rem-meta';
+    const badge = r.repeat!=='once'
+      ? `<span class="rem-badge">${r.repeat==='monthly'?'Co miesiąc':r.repeat==='weekly'?'Co tydzień':'Co rok'}</span>` : '';
     meta.innerHTML = `${formatDateNoSeconds(r.date)} ${badge}`;
-    info.appendChild(title);
-    info.appendChild(meta);
+    info.append(title, meta);
 
     const actions = document.createElement('div');
-    actions.className = 'rem-actions';
+    actions.className='rem-actions';
 
-    const paidBtn = document.createElement('button');
-    paidBtn.className = 'btn-paid';
-    paidBtn.textContent = 'Zapłacone ✔️';
-    paidBtn.onclick = () => handlePaid(r);
+    const btnPaid = document.createElement('button');
+    btnPaid.className='btn-paid'; btnPaid.textContent='Zapłacone ✔️';
+    btnPaid.onclick=()=>handlePaid(r);
 
-    const delBtn = document.createElement('button');
-    delBtn.textContent = 'Usuń 🗑️';
-    delBtn.onclick = () => {
-      reminders = reminders.filter(x => x.id !== r.id);
-      saveReminders(); updateReminderUI();
-    };
+    const btnDel = document.createElement('button');
+    btnDel.textContent='Usuń 🗑️';
+    btnDel.onclick=()=> deleteReminder(r.id);
 
-    actions.appendChild(paidBtn);
-    actions.appendChild(delBtn);
-
-    li.appendChild(info);
-    li.appendChild(actions);
+    actions.append(btnPaid, btnDel);
+    li.append(info, actions);
     reminderList.appendChild(li);
   });
 }
 
-/* Kolejkowanie toastów przypomnień (po jednym naraz) */
-let reminderQueue = [];
-let processingQueue = false;
-
-function enqueueReminderToast(rem) {
-  reminderQueue.push(rem);
-  if (!processingQueue) processQueue();
-}
-function processQueue() {
-  if (processingQueue) return;
-  if (reminderQueue.length === 0) { processingQueue = false; return; }
-  processingQueue = true;
-
-  const r = reminderQueue.shift();
-  if ('Notification' in window && Notification.permission === 'granted') {
-    try { new Notification(`Przypomnienie: ${r.text}`); } catch {}
+async function handlePaid(rem){
+  let input = prompt(`Kwota do zapłaty za: ${rem.text}`, "0");
+  if (input===null) return;
+  let amount = parseFloat(String(input).replace(',','.'));
+  if (isNaN(amount)||amount<=0){
+    showActionToast({text:'Podaj poprawną kwotę (>0).',warn:true});
+    return;
   }
+  // wpis do historii (lokalnie + chmura)
+  const row = { id:'loc-'+Date.now(), desc: rem.text, category:'Rachunki', amount:-Math.abs(amount), updatedAt: Date.now() };
+  entries.push(row); saveEntries(); updateUI(true);
+  try { await cloudInsertEntry(row); } catch(e){}
 
-  showActionToast({
-    text: `Przypomnienie: ${r.text}`,
-    warn: true,
-    timeout: 0, // stały baner
-    onPaid: () => { handlePaid(r); processingQueue = false; processQueue(); },
-    onOk:   () => { acknowledgeReminder(r); processingQueue = false; processQueue(); }
-  });
-}
-
-/* Sprawdzanie terminów – NIC nie usuwamy automatycznie */
-function checkReminders() {
-  const now = Date.now();
-  let changed = false;
-
-  reminders.forEach(r => {
-    const due = new Date(r.date).getTime();
-    if (due <= now) {
-      if (!r.awaitingAck) { r.awaitingAck = true; changed = true; }
-      enqueueReminderToast(r); // pokaż nawet po odświeżeniu
-    }
-  });
-
-  if (changed) {
-    saveReminders();
-    updateReminderUI();
+  // ACK/reminder shift
+  if (rem.repeat==='once'){
+    await deleteReminder(rem.id);
+  } else {
+    const now = Date.now();
+    let next = nextDateISO(rem.date, rem.repeat);
+    while(new Date(next).getTime()<=now) next=nextDateISO(next,rem.repeat);
+    rem.date = next; rem.awaitingAck=false; rem.updatedAt=Date.now();
+    saveReminders(); updateReminderUI();
+    try { await syncReminderRow(rem); } catch(e){}
   }
+  showActionToast({text:`Dodano wydatek: ${rem.text} (−${amount.toFixed(2)} zł)`});
 }
-setInterval(checkReminders, 30000);
 
-// Dodawanie przypomnień
-reminderForm?.addEventListener('submit', () => {
-  const text = reminderText.value.trim();
-  const dateVal = reminderDate.value; // lokalne 'YYYY-MM-DDTHH:MM'
+reminderForm?.addEventListener('submit', async ()=>{
+  const text = (reminderText.value||'').trim();
+  const dateVal = reminderDate.value;
   const repeat = reminderRepeat?.value || 'once';
   if (!text || !dateVal) return;
 
-  const local = new Date(dateVal);
-  const iso = local.toISOString();
+  const iso = new Date(dateVal).toISOString();
+  const row = { id:'loc-'+Math.random().toString(36).slice(2), text, date: iso, repeat, awaitingAck:false, updatedAt: Date.now() };
+  reminders.push(row); saveReminders(); updateReminderUI();
+  showActionToast({text:`Dodano przypomnienie: ${text}`});
 
-  reminders.push({ id: cryptoId(), text, date: iso, repeat });
-  saveReminders();
-  updateReminderUI();
+  reminderText.value=''; reminderDate.value=''; if(reminderRepeat) reminderRepeat.value='once';
 
-  reminderText.value = '';
-  reminderDate.value = '';
-  if (reminderRepeat) reminderRepeat.value = 'once';
-
-  showActionToast({ text: `Dodano przypomnienie: ${text} – ${formatDateNoSeconds(iso)}` });
+  try { await cloudInsertReminder(row); } catch(e){ console.warn(e); }
 });
 
-/* ====== Start ====== */
-document.addEventListener('DOMContentLoaded', () => {
-  // Historia/wpisy
-  loadEntries();
-  updateUI();
+async function deleteReminder(remId){
+  const row = reminders.find(r=>r.id===remId);
+  reminders = reminders.filter(r=>r.id!==remId);
+  saveReminders(); updateReminderUI();
+  try { await cloudDeleteReminder(row); } catch(e){}
+}
 
-  // Przypomnienia
-  loadReminders();
-  updateReminderUI();
-  if ('Notification' in window && Notification.permission === 'default') {
+async function syncReminderRow(rem){
+  if (!rem || String(rem.id).startsWith('loc-')) return;
+  await ensureAuth();
+  await supabase.from('reminders').update({
+    text: rem.text, date: rem.date, repeat: rem.repeat, awaiting_ack: !!rem.awaitingAck
+  }).eq('id', rem.id);
+}
+
+/* ============ Filtry – zdarzenia ============ */
+filterTypeSel?.addEventListener('change', ()=>{ updateUI(); });
+filterCatSel?.addEventListener('change', ()=>{ updateUI(); });
+filterResetBtn?.addEventListener('click', ()=>{
+  if (filterTypeSel) filterTypeSel.value='all';
+  if (filterCatSel)  filterCatSel.value='all';
+  updateUI();
+});
+
+/* ============ CSV ============ */
+function exportToCSV(){
+  if (!entries.length) return alert('Brak danych do eksportu.');
+  let csv='Data,Kategoria,Opis,Kwota\n';
+  entries.forEach(e=>{
+    const date=new Date(e.updatedAt||Date.now()).toLocaleString('pl-PL');
+    csv+=`"${date}","${e.category.replace(/"/g,'""')}","${String(e.desc).replace(/"/g,'""')}",${e.amount}\n`;
+  });
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='budzet.csv';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+exportCsvBtn?.addEventListener('click', exportToCSV);
+
+/* ============ PDF (Roboto lokalnie + fallback GitHub) ============ */
+let __robotoLoaded=false;
+function abToBase64(ab){ let bin=''; const bytes=new Uint8Array(ab); for(let i=0;i<bytes.byteLength;i++) bin+=String.fromCharCode(bytes[i]); return btoa(bin); }
+async function addFontFromResponse(doc,res,filename,family,style='normal'){
+  if(!res.ok) throw new Error(`HTTP ${res.status} dla ${filename}`);
+  const b64=abToBase64(await res.arrayBuffer()); doc.addFileToVFS(filename,b64); doc.addFont(filename,family,style);
+}
+async function tryLoadLocalRoboto(doc){
+  const regs=await fetch('./fonts/Roboto-Regular.ttf',{cache:'no-store'});
+  const bold=await fetch('./fonts/Roboto-Bold.ttf',{cache:'no-store'});
+  await addFontFromResponse(doc,regs,'Roboto-Regular.ttf','Roboto','normal');
+  await addFontFromResponse(doc,bold,'Roboto-Bold.ttf','Roboto','bold');
+}
+async function tryLoadRemoteRoboto(doc){
+  const regUrl='https://raw.githubusercontent.com/google/fonts/main/apache/roboto/Roboto-Regular.ttf';
+  const boldUrl='https://raw.githubusercontent.com/google/fonts/main/apache/roboto/Roboto-Bold.ttf';
+  const regs=await fetch(regUrl,{cache:'no-store'});
+  const bold=await fetch(boldUrl,{cache:'no-store'});
+  await addFontFromResponse(doc,regs,'Roboto-Regular.ttf','Roboto','normal');
+  await addFontFromResponse(doc,bold,'Roboto-Bold.ttf','Roboto','bold');
+}
+async function loadRoboto(doc){
+  if(__robotoLoaded){ doc.setFont('Roboto','normal'); return; }
+  try{ await tryLoadLocalRoboto(doc); }catch(e1){ console.warn('Lokalne fonty niedostępne, pobieram zdalnie…'); await tryLoadRemoteRoboto(doc); }
+  doc.setFont('Roboto','normal'); __robotoLoaded=true;
+}
+
+function makePDFMoney(n){ const s = Math.abs(n).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2}); return (n>=0?`+${s}`:`-${s}`)+' zł'; }
+
+async function exportToPDF(){
+  if (!entries.length) return alert('Brak danych do eksportu.');
+  const { jsPDF } = window.jspdf || {}; if(!jsPDF){ alert('Brak jsPDF'); return; }
+  const doc = new jsPDF({unit:'pt',format:'a4'}); await loadRoboto(doc); doc.setFont('Roboto','normal');
+
+  const pageW=doc.internal.pageSize.getWidth(), pageH=doc.internal.pageSize.getHeight();
+  const M=56, cText=[36,41,46], cMuted=[120,128,136], cLine=[214,220,226], cHead=[244,247,250], cZebra=[252,253,255], cGreen=[25,153,76], cRed=[229,57,53];
+  const colDate=M, colCat=M+160, colDesc=M+300, colAmtR=pageW-M;
+
+  doc.setFont('Roboto','bold'); doc.setFontSize(28); doc.setTextColor(...cText); doc.text('Budżet domowy Macieja', M, 70);
+  doc.setFont('Roboto','normal'); doc.setFontSize(11); doc.setTextColor(...cMuted); doc.text(`Wygenerowano: ${new Date().toLocaleString('pl-PL')}`, M, 92);
+
+  const headY=130; doc.setFillColor(...cHead); doc.roundedRect(M-8, headY-20, pageW-2*M+16, 32, 6,6,'F');
+  doc.setFont('Roboto','bold'); doc.setFontSize(13); doc.setTextColor(...cText);
+  doc.text('Data',colDate,headY); doc.text('Kategoria',colCat,headY); doc.text('Opis',colDesc,headY); doc.text('Kwota',colAmtR,headY,{align:'right'});
+  doc.setDrawColor(...cLine); doc.setLineWidth(0.7); doc.line(M,headY+6,pageW-M,headY+6);
+
+  doc.setFont('Roboto','normal'); doc.setFontSize(12);
+  let y=headY+30, rowH=24;
+  const rows=entries.slice(); // kolejność jak w appce
+
+  const newPage=()=>{ doc.addPage(); const y0=64;
+    doc.setFillColor(...cHead); doc.roundedRect(M-8, y0-20, pageW-2*M+16,32,6,6,'F');
+    doc.setFont('Roboto','bold'); doc.setFontSize(13); doc.setTextColor(...cText);
+    doc.text('Data',colDate,y0); doc.text('Kategoria',colCat,y0); doc.text('Opis',colDesc,y0); doc.text('Kwota',colAmtR,y0,{align:'right'});
+    doc.setDrawColor(...cLine); doc.setLineWidth(0.7); doc.line(M,y0+6,pageW-M,y0+6);
+    doc.setFont('Roboto','normal'); doc.setFontSize(12); return y0+30; };
+
+  rows.forEach((e,i)=>{
+    if (y>pageH-100) y=newPage();
+    if (i%2===0){ doc.setFillColor(...cZebra); doc.rect(M-8,y-16,pageW-2*M+16,rowH,'F'); }
+    const dateStr = new Date(e.updatedAt||Date.now()).toLocaleString('pl-PL');
+    doc.setTextColor(...cText); doc.text(dateStr,colDate,y); doc.text(e.category||'',colCat,y);
+    const maxW=(colAmtR-16)-colDesc; const lines=doc.splitTextToSize(String(e.desc||''),maxW);
+    doc.text(lines[0],colDesc,y);
+    doc.setTextColor(...(e.amount>=0?cGreen:cRed));
+    doc.text(makePDFMoney(e.amount), colAmtR, y, {align:'right'}); doc.setTextColor(...cText);
+    for(let k=1;k<lines.length;k++){ y+=rowH-6; if(y>pageH-100) y=newPage(); doc.text(lines[k],colDesc,y); }
+    y+=rowH;
+  });
+
+  const total=entries.reduce((s,e)=>s+e.amount,0);
+  if (y>pageH-120) y=newPage();
+  const boxW=300, boxH=56, boxX=pageW-M-boxW, boxY=y+14;
+  doc.setFillColor(236,248,240); doc.setDrawColor(210,232,216); doc.setLineWidth(1); doc.roundedRect(boxX,boxY,boxW,boxH,10,10,'FD');
+  doc.setFont('Roboto','bold'); doc.setFontSize(18); doc.setTextColor(...(total>=0?cGreen:cRed));
+  doc.text(`Suma: ${total.toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})} zł`, boxX+boxW/2, boxY+boxH/2+6, {align:'center'});
+
+  doc.setFont('Roboto','normal'); doc.setFontSize(9); doc.setTextColor(...cMuted); doc.text('Budżet domowy – PDF wygenerowany w przeglądarce', M, pageH-24);
+  doc.save('budzet.pdf');
+}
+exportPdfBtn?.addEventListener('click', exportToPDF);
+
+/* ============ Tryb ciemny – jeśli masz #theme-toggle ============ */
+document.getElementById('theme-toggle')?.addEventListener('click', ()=>{
+  document.documentElement.classList.toggle('dark');
+  // zapamiętaj preferencję jeśli chcesz:
+  // localStorage.setItem('theme', document.documentElement.classList.contains('dark')?'dark':'light');
+});
+
+/* =========================================================
+   SUPABASE – konfiguracja, auth, sync, realtime
+   ========================================================= */
+const SUPABASE_URL = 'https://kmcfmyrezzyejowrrbqy.supabase.co';       // <--- UZUPEŁNIJ
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttY2ZteXJlenp5ZWpvd3JyYnF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3NDUwMDgsImV4cCI6MjA3MDMyMTAwOH0.-IssqghD3mZkVG906Cao8udVQbzhCUEPQwIGG3nbg9s
+';                          // <--- UZUPEŁNIJ
+const supabase = window.supabase?.createClient?.(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+let currentUser=null;
+
+async function ensureAuth(){
+  if (!supabase){ setCloudBadge('offline','(brak klienta Supabase)'); return null; }
+  const { data:ses } = await supabase.auth.getSession();
+  if (ses?.session?.user){ currentUser=ses.session.user; setCloudBadge('online'); return currentUser; }
+  try{
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error) throw error;
+    currentUser = data.user; setCloudBadge('online');
+    return currentUser;
+  }catch(e){ console.warn('auth',e); setCloudBadge('offline'); return null; }
+}
+
+/* --- Cloud CRUD: ENTRIES --- */
+async function cloudInsertEntry(localRow){
+  await ensureAuth(); if(!currentUser) return;
+  setCloudBadge('sync');
+  const { data, error } = await supabase.from('entries')
+    .insert({ user_id: currentUser.id, desc: localRow.desc, category: localRow.category, amount: localRow.amount })
+    .select().single();
+  if (!error && data?.id){
+    const idx = entries.findIndex(x=>x.id===localRow.id);
+    if (idx>-1){ entries[idx].id=data.id; entries[idx].updatedAt = new Date(data.updated_at).getTime(); }
+    saveEntries(); updateUI();
+  }
+  setCloudBadge('online');
+}
+async function cloudDeleteEntry(row){
+  if (!row || String(row.id).startsWith('loc-')) return;
+  await ensureAuth(); if(!currentUser) return;
+  setCloudBadge('sync');
+  await supabase.from('entries').delete().eq('id', row.id);
+  setCloudBadge('online');
+}
+
+/* --- Cloud CRUD: REMINDERS --- */
+async function cloudInsertReminder(localRow){
+  await ensureAuth(); if(!currentUser) return;
+  setCloudBadge('sync');
+  const { data, error } = await supabase.from('reminders')
+    .insert({ user_id: currentUser.id, text: localRow.text, date: localRow.date, repeat: localRow.repeat, awaiting_ack: !!localRow.awaitingAck })
+    .select().single();
+  if (!error && data?.id){
+    const i=reminders.findIndex(r=>r.id===localRow.id);
+    if (i>-1){ reminders[i].id=data.id; reminders[i].updatedAt=new Date(data.updated_at).getTime(); }
+    saveReminders(); updateReminderUI();
+  }
+  setCloudBadge('online');
+}
+async function cloudDeleteReminder(row){
+  if (!row || String(row.id).startsWith('loc-')) return;
+  await ensureAuth(); if(!currentUser) return;
+  setCloudBadge('sync'); await supabase.from('reminders').delete().eq('id', row.id); setCloudBadge('online');
+}
+
+/* --- Pull-all (cloud wins) --- */
+async function pullAllFromCloud(){
+  await ensureAuth(); if(!currentUser) return;
+  setCloudBadge('sync','⬇️ Pobieram…');
+
+  // entries
+  const { data: eData, error: eErr } = await supabase
+    .from('entries').select('id, desc, category, amount, updated_at, created_at')
+    .order('created_at',{ascending:true});
+  if (!eErr && Array.isArray(eData)){
+    entries = eData.map(e=>({ id:e.id, desc:e.desc, category:e.category, amount:Number(e.amount), updatedAt: new Date(e.updated_at).getTime() }));
+    saveEntries(); updateUI();
+  }
+
+  // reminders
+  const { data: rData, error: rErr } = await supabase
+    .from('reminders').select('id, text, date, repeat, awaiting_ack, updated_at, created_at')
+    .order('date',{ascending:true});
+  if (!rErr && Array.isArray(rData)){
+    reminders = rData.map(r=>({ id:r.id, text:r.text, date:r.date, repeat:r.repeat, awaitingAck:!!r.awaiting_ack, updatedAt:new Date(r.updated_at).getTime() }));
+    saveReminders(); updateReminderUI();
+  }
+
+  setCloudBadge('online','🟢 Online (zsynchronizowano)');
+}
+
+/* --- Realtime: odśwież po zmianach --- */
+function subscribeRealtime(){
+  if (!supabase) return;
+  supabase.channel('entries-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'entries'}, ()=> pullAllFromCloud())
+    .subscribe();
+  supabase.channel('reminders-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'reminders'}, ()=> pullAllFromCloud())
+    .subscribe();
+}
+
+/* --- Manual Sync (przycisk) --- */
+async function manualSync(){ await pullAllFromCloud(); }
+
+/* ============ Pętla przypomnień (toast) ============ */
+function checkReminders(){
+  const now=Date.now(); let changed=false;
+  reminders.forEach(r=>{
+    const due = new Date(r.date).getTime();
+    if (due<=now){
+      if(!r.awaitingAck){ r.awaitingAck=true; r.updatedAt=Date.now(); changed=true; }
+      showActionToast({ text:`Przypomnienie: ${r.text}`, warn:true,
+        onPaid: ()=>handlePaid(r),
+        onOk:   async ()=>{ await acknowledgeReminder(r); }
+      });
+    }
+  });
+  if (changed){ saveReminders(); updateReminderUI(); }
+}
+async function acknowledgeReminder(rem){
+  if (rem.repeat==='once'){
+    await deleteReminder(rem.id);
+  } else {
+    const now=Date.now(); let next=nextDateISO(rem.date, rem.repeat);
+    while(new Date(next).getTime()<=now) next=nextDateISO(next,rem.repeat);
+    rem.date=next; rem.awaitingAck=false; rem.updatedAt=Date.now();
+    saveReminders(); updateReminderUI(); try{ await syncReminderRow(rem); }catch(e){}
+  }
+}
+
+/* ============ INIT ============ */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  loadEntriesLS(); loadRemindersLS(); updateUI(); updateReminderUI();
+
+  // powiadomienia (opcjonalnie)
+  if ('Notification' in window && Notification.permission === 'default'){
     Notification.requestPermission();
   }
-  checkReminders(); // pokaż oczekujące od razu
 
-  // Motyw – przywróć zapisany (opcjonalnie)
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark') {
-    document.body.classList.add('dark');
-    if (themeToggleBtn) themeToggleBtn.textContent = '☀️ Tryb jasny';
-  }
-});
+  // start chmury
+  await ensureAuth();
+  await pullAllFromCloud();
+  subscribeRealtime();
 
-// Przełącznik motywu – zapamiętaj wybór
-themeToggleBtn?.addEventListener('click', () => {
-  document.body.classList.toggle('dark');
-  const isDark = document.body.classList.contains('dark');
-  themeToggleBtn.textContent = isDark ? '☀️ Tryb jasny' : '🌙 Tryb ciemny';
-  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  // cykliczne sprawdzanie przypomnień
+  checkReminders();
+  setInterval(checkReminders, 30000);
 });
