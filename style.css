@@ -286,4 +286,4 @@ body.dark h2.total-card #total.total-neg{color:#ff8a80;background:rgba(231,76,60
 /* ========= DODATKI ========= */
 /* delikatne wejście nagłówka */
 @keyframes floatIn{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
-h1.title-anim{animation:floatIn .10s cubic-bezier(.22,.61,.36,1) both}
+h1.title-anim{animation:floatIn .20s cubic-bezier(.22,.61,.36,1) both}
